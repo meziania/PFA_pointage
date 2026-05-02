@@ -1,0 +1,164 @@
+// TimeTrack Pro — Prisma + MongoDB
+// https://www.prisma.io/docs/orm/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  EXCEPTIONAL
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AttendanceKind {
+  CLOCK_IN
+  CLOCK_OUT
+}
+
+enum AttendanceMethod {
+  GPS
+  QR_CODE
+  MANUAL
+}
+
+enum AttendanceDayStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EARLY_LEAVE
+  INSUFFICIENT_HOURS
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  DANGER
+}
+
+model User {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  email           String    @unique
+  emailVerified   DateTime?
+  name            String
+  image           String?
+  passwordHash    String
+  role            Role      @default(EMPLOYEE)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  attendances     Attendance[]
+  leaves          Leave[]    @relation("EmployeeLeaves")
+  reviewedLeaves  Leave[]    @relation("LeaveReviewer")
+  notifications   Notification[]
+  activityLogs    ActivityLog[]
+  qrCodesCreated  QrCode[]
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model Attendance {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String               @db.ObjectId
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime // jour de référence (UTC minuit ou logique métier)
+  kind        AttendanceKind
+  method      AttendanceMethod
+  status      AttendanceDayStatus?
+  occurredAt  DateTime             @default(now())
+  latitude    Float?
+  longitude   Float?
+  accuracyM   Float?
+  qrToken     String?
+  notes       String?
+  createdAt   DateTime             @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([userId, date])
+  @@index([date])
+}
+
+model Leave {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String       @db.ObjectId
+  user           User         @relation("EmployeeLeaves", fields: [userId], references: [id], onDelete: Cascade)
+  type           LeaveType
+  status         LeaveStatus  @default(PENDING)
+  startDate      DateTime
+  endDate        DateTime
+  reason         String?
+  reviewedById   String?      @db.ObjectId
+  reviewedBy     User?        @relation("LeaveReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  reviewerNote   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([userId, status])
+  @@index([startDate, endDate])
+}
+
+model QrCode {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  token       String   @unique
+  dayKey      String // ex. YYYY-MM-DD pour rotation quotidienne
+  validFrom   DateTime
+  validUntil  DateTime
+  isActive    Boolean  @default(true)
+  createdById String?  @db.ObjectId
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([dayKey])
+  @@index([validFrom, validUntil])
+}
+
+model Notification {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String           @db.ObjectId
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  type      NotificationType @default(INFO)
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action])
+  @@index([createdAt])
+}
