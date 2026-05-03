@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function userDocData(uid) {
+      return get(userPath(uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(userPath(request.auth.uid))
+        && userDocData(request.auth.uid).role == "admin";
+    }
+
+    function isEmploye() {
+      return signedIn()
+        && exists(userPath(request.auth.uid))
+        && userDocData(request.auth.uid).role == "employe";
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(["nom", "email", "role", "createdAt"])
+        && request.resource.data.nom is string
+        && request.resource.data.email is string
+        && request.resource.data.role in ["employe", "admin"]
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /pointages/{pointageId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    match /conges/{congeId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isEmploye()
+        && request.resource.data.keys().hasOnly(["userId", "dateDebut", "dateFin", "type", "statut", "createdAt"])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.dateDebut is string
+        && request.resource.data.dateFin is string
+        && request.resource.data.type in ["annuel", "maladie", "exceptionnel"]
+        && request.resource.data.statut == "en_attente"
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["statut"])
+        && request.resource.data.statut in ["en_attente", "valide", "refuse"];
+
+      allow delete: if false;
+    }
+  }
+}
