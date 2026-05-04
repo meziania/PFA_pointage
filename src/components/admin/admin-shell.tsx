@@ -56,14 +56,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 {it.label}
               </Link>
             ))}
-            <div className="mt-2 border-t pt-2">
-              <Link
-                href="/pointage"
-                className="block rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Retour employé
-              </Link>
-            </div>
           </nav>
         </aside>
 
