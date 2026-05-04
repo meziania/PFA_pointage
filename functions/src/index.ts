@@ -41,6 +41,24 @@ function haversineMeters(aLat: number, aLon: number, bLat: number, bLon: number)
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+function extractQrToken(input: string): string {
+  const raw = input.trim();
+  if (!raw) return "";
+
+  // Accept either a plain token or a "real link" containing ?token=...
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    try {
+      const u = new URL(raw);
+      const token = u.searchParams.get("token") ?? u.searchParams.get("qr") ?? u.searchParams.get("t");
+      if (token) return token.trim();
+    } catch {
+      // ignore URL parsing errors, fallback to raw
+    }
+  }
+
+  return raw;
+}
+
 async function getUserRole(uid: string): Promise<"admin" | "employe" | null> {
   const snap = await db.collection("users").doc(uid).get();
   if (!snap.exists) return null;
@@ -111,7 +129,8 @@ export const createPointage = onCall(async (request) => {
   if (!expectedQr) {
     throw new HttpsError("failed-precondition", "POINTAGE_QR_TOKEN is not configured on the function");
   }
-  if (qr !== expectedQr) {
+  const provided = extractQrToken(qr);
+  if (provided !== expectedQr) {
     throw new HttpsError("permission-denied", "Invalid QR token");
   }
 
