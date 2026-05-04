@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { differenceInBusinessDays, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -21,7 +22,43 @@ const schema = z.object({
   dateDebut: z.string().min(10, "Date début requise"),
   dateFin: z.string().min(10, "Date fin requise"),
   type: z.enum(["annuel", "maladie", "exceptionnel"]),
+  motif: z.string().optional(),
 });
+
+function typeLabel(t: CongeType): string {
+  if (t === "annuel") return "Annuel";
+  if (t === "maladie") return "Maladie";
+  return "Exceptionnel";
+}
+
+function statutLabel(s: CongeDoc["statut"]): string {
+  if (s === "valide") return "Validé";
+  if (s === "refuse") return "Refusé";
+  return "En attente";
+}
+
+function statutStyle(s: CongeDoc["statut"]): { dot: string; pill: string } {
+  if (s === "valide") {
+    return { dot: "bg-[var(--color-success)]", pill: "bg-[color-mix(in_oklch,var(--success)_20%,transparent)]" };
+  }
+  if (s === "refuse") {
+    return { dot: "bg-[var(--color-destructive)]", pill: "bg-[color-mix(in_oklch,var(--destructive)_20%,transparent)]" };
+  }
+  return { dot: "bg-[var(--color-warning)]", pill: "bg-[color-mix(in_oklch,var(--warning)_20%,transparent)]" };
+}
+
+function safeBusinessDays(start: string, end: string): number | null {
+  if (!start || !end) return null;
+  try {
+    const a = parseISO(start);
+    const b = parseISO(end);
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+    const d = differenceInBusinessDays(b, a) + 1;
+    return d > 0 ? d : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function CongesPage() {
   const { user } = useAuth();
@@ -31,7 +68,7 @@ export default function CongesPage() {
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { dateDebut: "", dateFin: "", type: "annuel" },
+    defaultValues: { dateDebut: "", dateFin: "", type: "annuel", motif: "" },
   });
 
   useEffect(() => {
@@ -39,11 +76,7 @@ export default function CongesPage() {
     const db = getFirebaseFirestore();
     if (!db) return;
 
-    const q = query(
-      collection(db, "conges"),
-      where("userId", "==", user.uid),
-      limit(100),
-    );
+    const q = query(collection(db, "conges"), where("userId", "==", user.uid), limit(100));
 
     let first = true;
     const unsub = onSnapshot(
@@ -68,7 +101,26 @@ export default function CongesPage() {
     return () => unsub();
   }, [user]);
 
-  const sorted = useMemo(() => rows, [rows]);
+  const sorted = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => a.dateDebut.localeCompare(b.dateDebut));
+    return copy;
+  }, [rows]);
+
+  const counts = useMemo(() => {
+    let pending = 0;
+    let validated = 0;
+    for (const r of rows) {
+      if (r.statut === "valide") validated += 1;
+      else if (r.statut === "en_attente") pending += 1;
+    }
+    return { pending, validated };
+  }, [rows]);
+
+  const v = form.getValues();
+  const days = safeBusinessDays(v.dateDebut, v.dateFin);
+
+  const soldeJours = 18;
 
   async function onSubmit(values: z.infer<typeof schema>) {
     if (!user) return;
@@ -81,7 +133,7 @@ export default function CongesPage() {
         type: values.type as CongeType,
       });
       toast.success("Demande envoyée");
-      form.reset({ dateDebut: "", dateFin: "", type: "annuel" });
+      form.reset({ dateDebut: "", dateFin: "", type: "annuel", motif: "" });
     } catch {
       toast.error("Erreur lors de la demande");
     } finally {
@@ -99,60 +151,104 @@ export default function CongesPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="relative overflow-hidden">
           <CardHeader>
-            <CardTitle>Demande de congé</CardTitle>
-            <CardDescription>Choisis les dates et le type.</CardDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <CardTitle>Demande de congé</CardTitle>
+                <CardDescription>Choisissez les dates et le type</CardDescription>
+              </div>
+              <div className="inline-flex items-center rounded-full border bg-background px-3 py-1 text-xs font-medium">
+                Solde : {soldeJours} jours
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="dateDebut"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date début</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="dateFin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date fin</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="dateDebut"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date début</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="dateFin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date fin</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="rounded-lg border bg-background/60 px-3 py-2 text-sm text-muted-foreground">
+                  {days ? <span>Durée calculée: {days} jours ouvrés</span> : <span>Sélectionnez des dates pour calculer la durée.</span>}
+                </div>
+
                 <FormField
                   control={form.control}
                   name="type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Type</FormLabel>
+                      <FormLabel>Type de congé</FormLabel>
                       <FormControl>
-                        <select
-                          className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                          {...field}
-                        >
-                          <option value="annuel">Annuel</option>
-                          <option value="maladie">Maladie</option>
-                          <option value="exceptionnel">Exceptionnel</option>
-                        </select>
+                        <div className="flex flex-wrap gap-2">
+                          {(["annuel", "maladie", "exceptionnel"] as const).map((t) => {
+                            const active = field.value === t;
+                            return (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => field.onChange(t)}
+                                className={
+                                  active
+                                    ? "rounded-full border bg-muted px-4 py-2 text-sm font-medium"
+                                    : "rounded-full border bg-background px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
+                                }
+                              >
+                                {typeLabel(t)}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="motif"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Motif (optionnel)</FormLabel>
+                      <FormControl>
+                        <textarea
+                          className="min-h-24 w-full resize-none rounded-md border bg-background px-3 py-2 text-sm"
+                          placeholder="Vacances d'été..."
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <Button type="submit" disabled={submitting} className="w-full">
                   {submitting ? "Envoi..." : "Envoyer la demande"}
                 </Button>
@@ -163,38 +259,63 @@ export default function CongesPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Mes demandes</CardTitle>
-            <CardDescription>{loading ? "Chargement..." : `${sorted.length} demande(s)`}</CardDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <CardTitle>Mes demandes</CardTitle>
+                <CardDescription>{loading ? "Chargement..." : `${sorted.length} demande(s)`}</CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => toast.message("Export PDF", { description: "À brancher: impression (window.print) ou génération PDF." })}
+              >
+                Exporter PDF
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left text-muted-foreground">
-                  <tr className="border-b">
-                    <th className="py-2 pr-4">Début</th>
-                    <th className="py-2 pr-4">Fin</th>
-                    <th className="py-2 pr-4">Type</th>
-                    <th className="py-2 pr-4">Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sorted.map((r) => (
-                    <tr key={r.id} className="border-b last:border-0">
-                      <td className="py-2 pr-4">{r.dateDebut}</td>
-                      <td className="py-2 pr-4">{r.dateFin}</td>
-                      <td className="py-2 pr-4">{r.type}</td>
-                      <td className="py-2 pr-4">{r.statut}</td>
-                    </tr>
-                  ))}
-                  {!loading && sorted.length === 0 ? (
-                    <tr>
-                      <td className="py-6 text-muted-foreground" colSpan={4}>
-                        Aucune demande.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+            <div className="grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border bg-background/60 p-3">
+                  <div className="text-xs text-muted-foreground">Solde restant</div>
+                  <div className="mt-1 text-2xl font-bold">{soldeJours} j</div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-3">
+                  <div className="text-xs text-muted-foreground">En attente</div>
+                  <div className="mt-1 text-2xl font-bold">{counts.pending}</div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-3">
+                  <div className="text-xs text-muted-foreground">Validés</div>
+                  <div className="mt-1 text-2xl font-bold">{counts.validated}</div>
+                </div>
+              </div>
+
+              <div className="divide-y rounded-lg border">
+                {sorted.map((r) => {
+                  const s = statutStyle(r.statut);
+                  const nb = safeBusinessDays(r.dateDebut, r.dateFin);
+                  return (
+                    <div key={r.id} className="flex items-start gap-3 p-3">
+                      <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-medium">
+                            {r.dateDebut} → {r.dateFin}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full border bg-background px-3 py-1 text-xs font-medium">
+                              {typeLabel(r.type as CongeType)}
+                            </span>
+                            <span className={`rounded-full border px-3 py-1 text-xs font-medium ${s.pill}`}>{statutLabel(r.statut)}</span>
+                          </div>
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">{nb ? `${nb} jours` : "Durée —"}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {!loading && sorted.length === 0 ? <div className="p-6 text-sm text-muted-foreground">Aucune demande.</div> : null}
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -2,19 +2,59 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { eachDayOfInterval, endOfMonth, format, isWeekend, parseISO, startOfMonth } from "date-fns";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/providers/auth-provider";
 import { listPointagesForUser } from "@/lib/firestore-helpers";
 import type { PointageDoc } from "@/lib/data-model";
 
 type Row = PointageDoc & { id: string };
 
+type FilterKey = "all" | "entree" | "sortie" | "retards";
+
+function toMinutes(hhmm: string): number | null {
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  return hh * 60 + mm;
+}
+
+function fmtHours(hours: number): string {
+  if (!Number.isFinite(hours)) return "0 h";
+  return `${Math.round(hours)} h`;
+}
+
+function downloadText(filename: string, content: string, mime = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(v: string): string {
+  const s = v ?? "";
+  if (/[",\n]/.test(s)) return `"${s.replaceAll("\"", "\"\"")}"`;
+  return s;
+}
+
 export default function HistoriquePage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [queryText, setQueryText] = useState("");
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const [month, setMonth] = useState(() => format(new Date(), "yyyy-MM"));
+
+  // Règle simple (MVP): entrée attendue à 08:30
+  const expectedStart = "08:30";
 
   useEffect(() => {
     if (!user) return;
@@ -28,30 +68,223 @@ export default function HistoriquePage() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const filtered = useMemo(() => {
-    const q = queryText.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => `${r.date} ${r.heure} ${r.type}`.toLowerCase().includes(q));
-  }, [rows, queryText]);
+  const monthRows = useMemo(() => {
+    const prefix = `${month}-`;
+    return rows.filter((r) => typeof r.date === "string" && r.date.startsWith(prefix));
+  }, [rows, month]);
+
+  const computed = useMemo(() => {
+    const expectedMin = toMinutes(expectedStart) ?? 510;
+
+    const byDay = new Map<string, Array<Row>>();
+    for (const r of monthRows) {
+      if (!byDay.has(r.date)) byDay.set(r.date, []);
+      byDay.get(r.date)!.push(r);
+    }
+
+    // Sort within day
+    for (const list of byDay.values()) {
+      list.sort((a, b) => (toMinutes(a.heure) ?? 0) - (toMinutes(b.heure) ?? 0));
+    }
+
+    let totalMinutes = 0;
+    let retardCount = 0;
+    let anomalies: Array<{ date: string; minutesLate: number }> = [];
+
+    for (const [date, list] of byDay) {
+      const firstEntree = list.find((x) => x.type === "entree");
+      const firstEntreeMin = firstEntree ? toMinutes(firstEntree.heure) : null;
+      if (firstEntreeMin !== null && firstEntreeMin > expectedMin) {
+        const late = firstEntreeMin - expectedMin;
+        retardCount += 1;
+        anomalies.push({ date, minutesLate: late });
+      }
+
+      // Pair entrée/sortie in order
+      let open: number | null = null;
+      for (const r of list) {
+        const t = toMinutes(r.heure);
+        if (t === null) continue;
+        if (r.type === "entree") open = t;
+        else if (r.type === "sortie" && open !== null && t >= open) {
+          totalMinutes += t - open;
+          open = null;
+        }
+      }
+    }
+
+    const periodStart = startOfMonth(parseISO(`${month}-01`));
+    const periodEnd = endOfMonth(periodStart);
+    const workdays = eachDayOfInterval({ start: periodStart, end: periodEnd }).filter((d) => !isWeekend(d));
+    const presentDays = workdays.filter((d) => byDay.has(format(d, "yyyy-MM-dd"))).length;
+    const absences = Math.max(0, workdays.length - presentDays);
+    const presenceRate = workdays.length > 0 ? Math.round((presentDays / workdays.length) * 100) : 0;
+
+    anomalies = anomalies
+      .sort((a, b) => b.minutesLate - a.minutesLate)
+      .slice(0, 3);
+
+    return {
+      totalHours: totalMinutes / 60,
+      retardCount,
+      absences,
+      presenceRate,
+      anomalies,
+      byDay,
+      expectedStart,
+    };
+  }, [monthRows, month, expectedStart]);
+
+  const viewRows = useMemo(() => {
+    const expectedMin = toMinutes(computed.expectedStart) ?? 510;
+    const withLate = (r: Row) => {
+      if (r.type !== "entree") return false;
+      const m = toMinutes(r.heure);
+      return m !== null && m > expectedMin;
+    };
+
+    const base =
+      filter === "entree"
+        ? monthRows.filter((r) => r.type === "entree")
+        : filter === "sortie"
+          ? monthRows.filter((r) => r.type === "sortie")
+          : filter === "retards"
+            ? monthRows.filter(withLate)
+            : monthRows;
+
+    return base.slice().sort((a, b) => {
+      const aa = Date.parse(`${a.date}T${a.heure}:00`);
+      const bb = Date.parse(`${b.date}T${b.heure}:00`);
+      return bb - aa;
+    });
+  }, [monthRows, filter, computed.expectedStart]);
+
+  const monthLabel = useMemo(() => {
+    try {
+      const d = parseISO(`${month}-01`);
+      return format(d, "LLLL yyyy");
+    } catch {
+      return month;
+    }
+  }, [month]);
 
   if (!user) return null;
+
+  const pills: Array<{ key: FilterKey; label: string }> = [
+    { key: "all", label: "Tous" },
+    { key: "entree", label: "Entrée" },
+    { key: "sortie", label: "Sortie" },
+    { key: "retards", label: "Retards" },
+  ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Historique</h1>
-        <p className="text-muted-foreground">Vos pointages récents.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Historique des pointages</h1>
+            <p className="text-muted-foreground">{loading ? "Chargement..." : `${monthRows.length} pointage(s) ce mois`}</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              const header = ["date", "heure", "type", "latitude", "longitude"];
+              const lines = viewRows.map((r) => [
+                r.date,
+                r.heure,
+                r.type,
+                typeof r.latitude === "number" ? String(r.latitude) : "",
+                typeof r.longitude === "number" ? String(r.longitude) : "",
+              ]);
+              const csv = [header, ...lines].map((row) => row.map(csvEscape).join(",")).join("\n");
+              downloadText(`pointages-${month}.csv`, csv, "text/csv;charset=utf-8");
+            }}
+          >
+            Exporter CSV
+          </Button>
+        </div>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Heures ce mois</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{fmtHours(computed.totalHours)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Retards</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-[color-mix(in_oklch,var(--warning)_70%,white)]">{computed.retardCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Absences</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-[color-mix(in_oklch,var(--destructive)_70%,white)]">{computed.absences}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Taux présence</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-[color-mix(in_oklch,var(--success)_70%,white)]">{computed.presenceRate}%</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {pills.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => setFilter(p.key)}
+              className={
+                filter === p.key
+                  ? "rounded-full border bg-muted px-4 py-2 text-sm font-medium"
+                  : "rounded-full border bg-background px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
+              }
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="rounded-full border bg-background px-4 py-2 text-sm text-muted-foreground">{monthLabel}</div>
+          <input
+            className="h-10 rounded-md border bg-background px-3 text-sm"
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {computed.anomalies.length > 0 ? (
+        <div className="rounded-lg border bg-[color-mix(in_oklch,var(--warning)_18%,transparent)] px-4 py-3 text-sm">
+          <span className="font-medium">{computed.anomalies.length} anomalie(s) détectée(s)</span>
+          {" — "}
+          {computed.anomalies[0] ? (
+            <span>
+              retard de {computed.anomalies[0].minutesLate} min le {computed.anomalies[0].date.slice(8, 10)}/{computed.anomalies[0].date.slice(5, 7)}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       <Card>
-        <CardHeader className="gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <CardTitle>Pointages</CardTitle>
-            <CardDescription>{loading ? "Chargement..." : `${filtered.length} élément(s)`}</CardDescription>
-          </div>
-          <div className="w-full md:w-80">
-            <Input value={queryText} onChange={(e) => setQueryText(e.target.value)} placeholder="Filtrer (date, type…)" />
-          </div>
+        <CardHeader>
+          <CardTitle>Pointages</CardTitle>
+          <CardDescription>{loading ? "Chargement..." : `${viewRows.length} ligne(s)`}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -61,21 +294,52 @@ export default function HistoriquePage() {
                   <th className="py-2 pr-4">Date</th>
                   <th className="py-2 pr-4">Heure</th>
                   <th className="py-2 pr-4">Type</th>
-                  <th className="py-2 pr-4">Latitude</th>
-                  <th className="py-2 pr-4">Longitude</th>
+                  <th className="py-2 pr-4">Localisation</th>
+                  <th className="py-2 pr-4">Statut</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} className="border-b last:border-0">
-                    <td className="py-2 pr-4">{r.date}</td>
-                    <td className="py-2 pr-4">{r.heure}</td>
-                    <td className="py-2 pr-4">{r.type === "entree" ? "Entrée" : "Sortie"}</td>
-                    <td className="py-2 pr-4">{typeof r.latitude === "number" ? r.latitude.toFixed(5) : "-"}</td>
-                    <td className="py-2 pr-4">{typeof r.longitude === "number" ? r.longitude.toFixed(5) : "-"}</td>
-                  </tr>
-                ))}
-                {!loading && filtered.length === 0 ? (
+                {viewRows.map((r) => {
+                  const isEntree = r.type === "entree";
+                  const expectedMin = toMinutes(computed.expectedStart) ?? 510;
+                  const m = toMinutes(r.heure);
+                  const lateMin = isEntree && m !== null && m > expectedMin ? m - expectedMin : 0;
+                  const status = lateMin > 0 ? `Retard ${lateMin} min` : "Normal";
+                  return (
+                    <tr key={r.id} className="border-b last:border-0">
+                      <td className="py-3 pr-4 font-medium">{r.date.split("-").reverse().join("/")}</td>
+                      <td className="py-3 pr-4">{r.heure}</td>
+                      <td className="py-3 pr-4">
+                        <span
+                          className={
+                            isEntree
+                              ? "inline-flex rounded-full border bg-[color-mix(in_oklch,var(--success)_18%,transparent)] px-3 py-1 text-xs font-medium"
+                              : "inline-flex rounded-full border bg-[color-mix(in_oklch,var(--destructive)_12%,transparent)] px-3 py-1 text-xs font-medium"
+                          }
+                        >
+                          {isEntree ? "Entrée" : "Sortie"}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-4 text-muted-foreground">
+                        {typeof r.latitude === "number" && typeof r.longitude === "number"
+                          ? `${r.latitude.toFixed(4)}°, ${r.longitude.toFixed(4)}°`
+                          : "—"}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span
+                          className={
+                            lateMin > 0
+                              ? "inline-flex rounded-full border bg-[color-mix(in_oklch,var(--warning)_18%,transparent)] px-3 py-1 text-xs font-medium"
+                              : "inline-flex rounded-full border bg-[color-mix(in_oklch,var(--success)_18%,transparent)] px-3 py-1 text-xs font-medium"
+                          }
+                        >
+                          {status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!loading && viewRows.length === 0 ? (
                   <tr>
                     <td className="py-6 text-muted-foreground" colSpan={5}>
                       Aucun pointage pour le moment.

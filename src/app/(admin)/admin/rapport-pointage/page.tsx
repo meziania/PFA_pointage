@@ -12,6 +12,24 @@ import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 
 type Row = PointageDoc & { id: string };
 
+function downloadText(filename: string, content: string, mime = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(v: string): string {
+  const s = v ?? "";
+  if (/[",\n]/.test(s)) return `"${s.replaceAll("\"", "\"\"")}"`;
+  return s;
+}
+
 function hoursBetween(entry: Row, exit: Row): number {
   const [eh, em] = entry.heure.split(":").map(Number);
   const [sh, sm] = exit.heure.split(":").map(Number);
@@ -177,6 +195,33 @@ export default function AdminRapportPointagePage() {
     ? `${selectedEmployee.nom} · ${selectedEmployee.email}`
     : selectedEmployee?.nom;
 
+  const exportFilename = useMemo(() => {
+    const emp = employeeId ? `-${employeeId.slice(0, 6)}` : "";
+    if (filterMode === "day" && date) return `rapport-pointage${emp}-${date}.csv`;
+    if (filterMode === "range" && (dateDebut || dateFin)) return `rapport-pointage${emp}-${dateDebut || "start"}_${dateFin || "end"}.csv`;
+    return `rapport-pointage${emp}.csv`;
+  }, [employeeId, filterMode, date, dateDebut, dateFin]);
+
+  function exportCsv() {
+    const header = ["userNom", "userEmail", "date", "heure", "type", "latitude", "longitude", "valide"];
+    const lines = filtered.map((r) => {
+      const u = userById.get(r.userId);
+      return [
+        u?.nom ?? "",
+        u?.email ?? "",
+        r.date,
+        r.heure,
+        r.type,
+        typeof r.latitude === "number" ? String(r.latitude) : "",
+        typeof r.longitude === "number" ? String(r.longitude) : "",
+        String(Boolean(r.valide)),
+      ];
+    });
+    const csv = [header, ...lines].map((row) => row.map(csvEscape).join(",")).join("\n");
+    downloadText(exportFilename, csv, "text/csv;charset=utf-8");
+    toast.success("Export CSV généré");
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -274,9 +319,14 @@ export default function AdminRapportPointagePage() {
             <div className="text-xs text-muted-foreground">
               Astuce: clique <span className="font-medium">Charger</span> pour rafraîchir les données, puis joue avec les filtres (instantané).
             </div>
-            <Button onClick={load} disabled={loading} className="w-full sm:w-auto">
-              {loading ? "Chargement..." : "Charger les pointages"}
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button onClick={load} disabled={loading} className="w-full sm:w-auto">
+                {loading ? "Chargement..." : "Charger les pointages"}
+              </Button>
+              <Button type="button" variant="outline" onClick={exportCsv} disabled={filtered.length === 0} className="w-full sm:w-auto">
+                Exporter CSV
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

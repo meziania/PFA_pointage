@@ -39,7 +39,7 @@ export function AppProviders({ children }: AppProvidersProps) {
       <AuthProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
-          <Toaster richColors position="top-right" closeButton />
+          <Toaster richColors position="bottom-right" closeButton visibleToasts={2} />
         </ThemeProvider>
       </AuthProvider>
       {process.env.NODE_ENV === "development" ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
