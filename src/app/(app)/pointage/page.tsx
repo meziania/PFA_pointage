@@ -135,7 +135,7 @@ export default function PointagePage() {
     const now = Date.now();
     const last = lastQrToastRef.current;
     if (!last || last.text !== clean || now - last.at > 2000) {
-      toast.success("QR détecté");
+      toast.success("QR détecté", { id: "qr-detected" });
       lastQrToastRef.current = { text: clean, at: now };
     }
     setScanning(false);
