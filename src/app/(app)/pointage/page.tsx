@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { httpsCallable } from "firebase/functions";
@@ -78,6 +78,7 @@ export default function PointagePage() {
   const [qr, setQr] = useState<string>("");
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const lastQrToastRef = useRef<{ text: string; at: number } | null>(null);
   const qrTrimmed = useMemo(() => qr.trim(), [qr]);
 
   const orgLat = useMemo(() => parseEnvNumber(process.env.NEXT_PUBLIC_ORG_LAT), []);
@@ -127,8 +128,16 @@ export default function PointagePage() {
   }, []);
 
   const handleQrDecoded = useCallback((text: string) => {
-    setQr(text);
-    toast.success("QR détecté");
+    const clean = String(text ?? "").trim();
+    if (!clean) return;
+    setQr(clean);
+    // Dedup toast in case the scanner fires multiple times.
+    const now = Date.now();
+    const last = lastQrToastRef.current;
+    if (!last || last.text !== clean || now - last.at > 2000) {
+      toast.success("QR détecté");
+      lastQrToastRef.current = { text: clean, at: now };
+    }
     setScanning(false);
   }, []);
 
