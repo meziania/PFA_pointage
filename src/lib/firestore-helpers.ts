@@ -52,6 +52,20 @@ export async function getUserRole(uid: string): Promise<UserRole | null> {
   return null;
 }
 
+export async function getUserDoc(uid: string): Promise<(UserDoc & { id: string }) | null> {
+  const db = requireDb();
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...(snap.data() as UserDoc) };
+}
+
+export async function updateUserDoc(uid: string, patch: Partial<UserDoc>): Promise<void> {
+  const db = requireDb();
+  const ref = doc(db, "users", uid);
+  await updateDoc(ref, patch);
+}
+
 export async function listPointagesForUser(uid: string, take = 50): Promise<Array<PointageDoc & { id: string }>> {
   const db = requireDb();
   // Avoid composite index requirement: no orderBy here; sort client-side.

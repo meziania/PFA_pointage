@@ -12,6 +12,7 @@ const navItems = [
   { href: "/pointage", label: "Pointer" },
   { href: "/historique", label: "Historique" },
   { href: "/conges", label: "Congés" },
+  { href: "/profil", label: "Profil" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

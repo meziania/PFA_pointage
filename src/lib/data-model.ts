@@ -4,6 +4,15 @@ export type UserDoc = {
   nom: string;
   email: string;
   role: UserRole;
+  // Profil employé (optionnel)
+  matricule?: string;
+  telephone?: string;
+  departement?: string;
+  poste?: string;
+  cin?: string;
+  adresse?: string;
+  dateNaissance?: string; // YYYY-MM-DD
+  dateEmbauche?: string; // YYYY-MM-DD
   createdAt?: unknown;
 };
 
