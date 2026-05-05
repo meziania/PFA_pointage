@@ -31,8 +31,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Firestore doc may be created right after register; retry briefly to avoid
+      // transient "role = null" states that can cause navigation flicker.
+      setLoading(true);
       try {
-        const r = await getUserRole(u.uid);
+        let r: UserRole | null = null;
+        for (let i = 0; i < 10; i += 1) {
+          r = await getUserRole(u.uid);
+          if (r) break;
+          await new Promise((res) => setTimeout(res, 300));
+        }
         setRole(r);
       } catch {
         setRole(null);

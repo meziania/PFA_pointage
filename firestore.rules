@@ -31,13 +31,55 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(["nom", "email", "role", "createdAt"])
+        && request.resource.data.keys().hasOnly([
+          "nom",
+          "email",
+          "role",
+          "createdAt",
+          // Profil employé (optionnel)
+          "matricule",
+          "telephone",
+          "departement",
+          "poste",
+          "cin",
+          "adresse",
+          "dateNaissance",
+          "dateEmbauche"
+        ])
         && request.resource.data.nom is string
         && request.resource.data.email is string
         && request.resource.data.role in ["employe", "admin"]
+        && (!("matricule" in request.resource.data) || request.resource.data.matricule is string)
+        && (!("telephone" in request.resource.data) || request.resource.data.telephone is string)
+        && (!("departement" in request.resource.data) || request.resource.data.departement is string)
+        && (!("poste" in request.resource.data) || request.resource.data.poste is string)
+        && (!("cin" in request.resource.data) || request.resource.data.cin is string)
+        && (!("adresse" in request.resource.data) || request.resource.data.adresse is string)
+        && (!("dateNaissance" in request.resource.data) || request.resource.data.dateNaissance is string)
+        && (!("dateEmbauche" in request.resource.data) || request.resource.data.dateEmbauche is string)
         && request.resource.data.createdAt == request.time;
 
-      allow update: if isAdmin();
+      // Admin can update any user doc.
+      // Employee can update only their profile fields (not role/email/createdAt).
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "nom",
+            "matricule",
+            "telephone",
+            "departement",
+            "poste",
+            "cin",
+            "adresse",
+            "dateNaissance",
+            "dateEmbauche"
+          ])
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.createdAt == resource.data.createdAt
+        );
       allow delete: if false;
     }
 

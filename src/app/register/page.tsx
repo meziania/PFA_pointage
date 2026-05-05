@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { ensureUserDoc } from "@/lib/firestore-helpers";
+import { signOut } from "firebase/auth";
 
 const formSchema = z.object({
   nom: z.string().min(2, {
@@ -66,8 +67,12 @@ export default function RegisterPage() {
         role: "employe",
       });
 
-      toast.success("Compte créé avec succès !");
-      router.push("/pointage");
+      // UX demandée: après inscription, revenir à la page login
+      // pour que l'utilisateur saisisse email/mot de passe.
+      await signOut(auth);
+      toast.success("Compte créé. Connectez-vous maintenant.");
+      router.push("/login");
+      router.refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Une erreur est survenue";
       if (message.includes("auth/email-already-in-use")) {

@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { onUserCreated } from "firebase-functions/v2/identity";
 import { defineString } from "firebase-functions/params";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
@@ -15,6 +16,26 @@ const orgRadiusM = defineString("ORG_RADIUS_M");
 const qrToken = defineString("POINTAGE_QR_TOKEN");
 
 type PointageType = "entree" | "sortie";
+
+export const onAuthUserCreated = onUserCreated(async (event) => {
+  const user = event.data;
+  if (!user?.uid) return;
+
+  const uid = user.uid;
+  const email = user.email ?? "";
+  const nom = user.displayName ?? (email ? email.split("@")[0] : "Employé");
+
+  const ref = db.collection("users").doc(uid);
+  const snap = await ref.get();
+  if (snap.exists) return;
+
+  await ref.set({
+    nom,
+    email,
+    role: "employe",
+    createdAt: FieldValue.serverTimestamp(),
+  });
+});
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
