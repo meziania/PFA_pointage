@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 const items = [
   { href: "/admin/dashboard", label: "Dashboard" },
@@ -61,9 +62,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             >
               ☰
             </button>
-            <Link href="/admin/dashboard" className="font-semibold">
-              Admin · TimeTrack Pro
-            </Link>
+            <div className="flex items-center gap-2">
+              <BrandLogo href="/admin/dashboard" />
+              <span className="hidden text-sm font-semibold md:inline">Admin</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />

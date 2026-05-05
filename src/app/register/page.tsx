@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { ensureUserDoc } from "@/lib/firestore-helpers";
 import { signOut } from "firebase/auth";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 const formSchema = z.object({
   nom: z.string().min(2, {
@@ -91,6 +92,9 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-muted/50 px-4">
+      <div className="mb-6">
+        <BrandLogo size="lg" />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Créer un compte</CardTitle>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { collection, limit, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, limit, onSnapshot, query, where } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
@@ -10,6 +10,7 @@ import type { CongeDoc, CongeStatut } from "@/lib/data-model";
 import { updateCongeStatut } from "@/lib/firestore-helpers";
 
 type Row = CongeDoc & { id: string };
+type UserMini = { nom?: string; email?: string } | null;
 
 function typeLabel(t: CongeDoc["type"]): string {
   if (t === "annuel") return "Annuel";
@@ -22,6 +23,7 @@ export default function AdminCongesPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [view, setView] = useState<"en_attente" | "tous">("en_attente");
+  const [usersById, setUsersById] = useState<Record<string, UserMini>>({});
 
   useEffect(() => {
     const db = getFirebaseFirestore();
@@ -52,6 +54,45 @@ export default function AdminCongesPage() {
 
     return () => unsub();
   }, [view]);
+
+  useEffect(() => {
+    const db = getFirebaseFirestore();
+    if (!db) return;
+    if (!rows.length) return;
+
+    const unique = Array.from(new Set(rows.map((r) => r.userId).filter(Boolean)));
+    const missing = unique.filter((uid) => usersById[uid] === undefined);
+    if (!missing.length) return;
+
+    let cancelled = false;
+    void (async () => {
+      const next: Record<string, UserMini> = {};
+      await Promise.all(
+        missing.map(async (uid) => {
+          try {
+            const snap = await getDoc(doc(db, "users", uid));
+            if (!snap.exists()) {
+              next[uid] = null;
+              return;
+            }
+            const data = snap.data() as { nom?: unknown; email?: unknown } | undefined;
+            next[uid] = {
+              nom: typeof data?.nom === "string" ? data.nom : undefined,
+              email: typeof data?.email === "string" ? data.email : undefined,
+            };
+          } catch {
+            next[uid] = null;
+          }
+        }),
+      );
+      if (cancelled) return;
+      setUsersById((prev) => ({ ...prev, ...next }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rows, usersById]);
 
   const sorted = useMemo(() => {
     const copy = [...rows];
@@ -137,57 +178,57 @@ export default function AdminCongesPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-muted-foreground">
                 <tr className="border-b">
-                  <th className="py-2 pr-4">UserId</th>
-                  <th className="py-2 pr-4">Début</th>
-                  <th className="py-2 pr-4">Fin</th>
+                  <th className="py-2 pr-4">Employé</th>
+                  <th className="py-2 pr-4 whitespace-nowrap">Début</th>
+                  <th className="py-2 pr-4 whitespace-nowrap">Fin</th>
                   <th className="py-2 pr-4">Type</th>
                   <th className="py-2 pr-4">Statut</th>
-                  <th className="py-2 pr-4">Actions</th>
+                  <th className="py-2 pr-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((r) => (
-                  <tr key={r.id} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-mono text-xs">{r.userId}</td>
-                    <td className="py-2 pr-4">{r.dateDebut}</td>
-                    <td className="py-2 pr-4">{r.dateFin}</td>
-                    <td className="py-2 pr-4">
-                      <span className="rounded-full border bg-background px-3 py-1 text-xs font-medium">{typeLabel(r.type)}</span>
-                    </td>
-                    <td className="py-2 pr-4">
-                      <span
-                        className={
-                          r.statut === "valide"
-                            ? "rounded-full border bg-[color-mix(in_oklch,var(--success)_18%,transparent)] px-3 py-1 text-xs font-medium"
-                            : r.statut === "refuse"
-                              ? "rounded-full border bg-[color-mix(in_oklch,var(--destructive)_18%,transparent)] px-3 py-1 text-xs font-medium"
-                              : "rounded-full border bg-[color-mix(in_oklch,var(--warning)_18%,transparent)] px-3 py-1 text-xs font-medium"
-                        }
-                      >
-                        {r.statut === "valide" ? "Validé" : r.statut === "refuse" ? "Refusé" : "En attente"}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-4">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          disabled={updatingId === r.id}
-                          onClick={() => setStatut(r.id, "valide")}
+                {sorted.map((r) => {
+                  const u = usersById[r.userId];
+                  const displayName = u?.nom || u?.email || "Employé";
+                  return (
+                    <tr key={r.id} className="border-b last:border-0 align-top">
+                      <td className="py-2 pr-4">
+                        <div className="min-w-[220px]">
+                          <div className="font-medium">{displayName}</div>
+                          <div className="text-xs text-muted-foreground">{u?.email ? u.email : r.userId}</div>
+                        </div>
+                      </td>
+                      <td className="py-2 pr-4 whitespace-nowrap tabular-nums">{r.dateDebut}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap tabular-nums">{r.dateFin}</td>
+                      <td className="py-2 pr-4">
+                        <span className="rounded-full border bg-background px-3 py-1 text-xs font-medium">{typeLabel(r.type)}</span>
+                      </td>
+                      <td className="py-2 pr-4">
+                        <span
+                          className={
+                            r.statut === "valide"
+                              ? "rounded-full border bg-[color-mix(in_oklch,var(--success)_18%,transparent)] px-3 py-1 text-xs font-medium"
+                              : r.statut === "refuse"
+                                ? "rounded-full border bg-[color-mix(in_oklch,var(--destructive)_18%,transparent)] px-3 py-1 text-xs font-medium"
+                                : "rounded-full border bg-[color-mix(in_oklch,var(--warning)_18%,transparent)] px-3 py-1 text-xs font-medium"
+                          }
                         >
-                          Valider
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={updatingId === r.id}
-                          onClick={() => setStatut(r.id, "refuse")}
-                        >
-                          Refuser
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {r.statut === "valide" ? "Validé" : r.statut === "refuse" ? "Refusé" : "En attente"}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-4">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button size="sm" disabled={updatingId === r.id} onClick={() => setStatut(r.id, "valide")}>
+                            Valider
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={updatingId === r.id} onClick={() => setStatut(r.id, "refuse")}>
+                            Refuser
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {!loading && sorted.length === 0 ? (
                   <tr>
                     <td className="py-6 text-muted-foreground" colSpan={6}>

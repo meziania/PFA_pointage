@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 const navItems = [
   { href: "/pointage", label: "Pointer" },
@@ -47,9 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               ☰
             </button>
-            <Link href="/" className="font-semibold">
-              TimeTrack Pro
-            </Link>
+            <BrandLogo />
             <nav className="hidden items-center gap-1 md:flex">
               {navItems.map((it) => (
                 <Link

@@ -1,0 +1,317 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{listings}
+
+\lstdefinestyle{bash}{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{black},
+  commentstyle=\color{gray},
+  stringstyle=\color{teal},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{black!15},
+  backgroundcolor=\color{black!2},
+  numbers=none
+}
+
+\title{Rapport de projet (PFA Frontend) --- Application de gestion du pointage numérique}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\textbf{Projet} : TimeTrack Pro --- Gestion du pointage numérique des employés\\
+\textbf{Référentiel} : Cahier des charges PFA + projet Frontend (« Application de gestion du pointage numérique des employés »)\\
+\textbf{Technologies livrées} : Next.js (App Router), Firebase (Auth + Firestore), Firebase Cloud Functions, Tailwind CSS, Recharts
+
+\begin{quote}
+Ce rapport décrit le produit réalisé, son architecture, ses fonctionnalités, ainsi que la conformité au cahier des charges et les améliorations apportées.
+\end{quote}
+
+\section{Contexte et objectif}
+L’objectif du projet est de développer une application web permettant de :
+\begin{itemize}[leftmargin=*]
+  \item gérer le \textbf{pointage} des employés en temps réel,
+  \item vérifier la présence via \textbf{géolocalisation (GPS)},
+  \item scanner un \textbf{QR code sécurisé},
+  \item gérer les \textbf{congés},
+  \item offrir un \textbf{tableau de bord analytique},
+  \item détecter les anomalies : \textbf{retards}, \textbf{absences}, \textbf{sorties anticipées} et \textbf{insuffisances d’heures}.
+\end{itemize}
+
+\section{Périmètre et acteurs}
+\subsection{Acteurs}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Administrateur} : pilote l’ensemble (dashboard, employés, congés, rapports).
+  \item \textbf{Employé} : pointe (GPS + QR), consulte son historique, demande des congés, gère son profil.
+\end{itemize}
+
+\subsection{Hypothèses et périmètre}
+\begin{itemize}[leftmargin=*]
+  \item L’application est pensée pour un usage \textbf{web} (desktop + mobile).
+  \item La validation du pointage (QR + zone) se fait \textbf{côté backend}.
+  \item Les données opérationnelles sont stockées dans \textbf{Firestore}.
+\end{itemize}
+
+\section{Architecture technique (réalisée)}
+\subsection{Frontend}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Framework} : Next.js \texttt{16.x} (App Router).
+  \item \textbf{UI \& UX} : Tailwind CSS + composants UI (Radix).
+  \item \textbf{Formulaires \& validation} : React Hook Form + Zod.
+  \item \textbf{Graphiques} : Recharts.
+  \item \textbf{Notifications} : Sonner (toasts).
+\end{itemize}
+
+\subsection{Backend}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Firebase Cloud Functions (v2)} : logique serveur pour le pointage (Callable Function).
+  \item \textbf{Auth Trigger (recommandation/évolution)} : création automatique du profil \texttt{users/\{uid\}} à la création d’un compte (voir \S 11).
+\end{itemize}
+
+\subsection{Données}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Stockage principal} : Firestore (\texttt{users}, \texttt{pointages}, \texttt{conges}).
+\end{itemize}
+
+\begin{quote}
+\textbf{Remarque conformité CDC :} le cahier des charges propose MongoDB/REST en exemple, mais n’impose pas strictement la technologie. Le résultat fonctionnel (collections, sécurité, API) est équivalent. La solution Firestore + Functions garantit la sécurité et simplifie la mise en œuvre.
+\end{quote}
+
+\section{Modèle de données (Firestore)}
+Le modèle suit l’esprit des collections attendues :
+
+\subsection{\texttt{users}}
+\begin{itemize}[leftmargin=*]
+  \item \texttt{nom}, \texttt{email}, \texttt{role} (\texttt{admin} \,|\, \texttt{employe}), \texttt{createdAt}
+  \item champs profil employé (optionnels) : \texttt{matricule}, \texttt{telephone}, \texttt{departement}, \texttt{poste}, \texttt{cin}, \texttt{adresse}, \texttt{dateNaissance}, \texttt{dateEmbauche}
+\end{itemize}
+
+\subsection{\texttt{pointages}}
+\begin{itemize}[leftmargin=*]
+  \item \texttt{userId}, \texttt{date} (YYYY-MM-DD), \texttt{heure} (HH:MM), \texttt{type} (\texttt{entree} \,|\, \texttt{sortie})
+  \item \texttt{latitude}, \texttt{longitude}, \texttt{valide}, \texttt{createdAt} (server timestamp)
+  \item (optionnel) précision GPS \texttt{accuracyM}
+\end{itemize}
+
+\subsection{\texttt{conges}}
+\begin{itemize}[leftmargin=*]
+  \item \texttt{userId}, \texttt{dateDebut}, \texttt{dateFin}, \texttt{type} (\texttt{annuel} \,|\, \texttt{maladie} \,|\, \texttt{exceptionnel})
+  \item \texttt{statut} (\texttt{en\_attente} \,|\, \texttt{valide} \,|\, \texttt{refuse}), \texttt{createdAt}
+\end{itemize}
+
+\section{Fonctionnalités principales (réalisées)}
+\subsection{Authentification \& rôles}
+Conforme à la demande :
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Connexion sécurisée} email + mot de passe.
+  \item \textbf{Rôles} admin / employé.
+  \item Gestion de session côté client via Firebase Auth + lecture du rôle dans Firestore.
+\end{itemize}
+
+\subsection{Pointage intelligent (GPS + QR)}
+Flux employé (conforme CDC) :
+\begin{enumerate}[leftmargin=*]
+  \item L’employé ouvre la page \textbf{Pointer}.
+  \item L’application récupère la \textbf{géolocalisation} (stratégie en 2 étapes : rapide puis haute précision).
+  \item L’employé scanne un \textbf{QR code}.
+  \item Le backend valide :
+  \begin{itemize}
+    \item token QR attendu,
+    \item présence dans la \textbf{zone autorisée},
+    \item puis enregistre le pointage (entrée/sortie) avec timestamp serveur.
+  \end{itemize}
+\end{enumerate}
+
+Améliorations UX / anti-fraude :
+\begin{itemize}[leftmargin=*]
+  \item feedback clair (état GPS, précision, distance, zone OK/KO),
+  \item déduplication des notifications « QR détecté »,
+  \item stabilisation de la caméra (éviter flux doublé + AbortError).
+\end{itemize}
+
+\subsection{Gestion des congés}
+\textbf{Employé} :
+\begin{itemize}[leftmargin=*]
+  \item demande de congé avec type, dates, et calcul de durée (jours ouvrés).
+\end{itemize}
+
+\textbf{Admin} :
+\begin{itemize}[leftmargin=*]
+  \item visualisation des demandes,
+  \item \textbf{validation / refus},
+  \item filtres (en attente / tous).
+\end{itemize}
+
+\subsection{Tableau de bord analytique (admin)}
+Dashboard admin :
+\begin{itemize}[leftmargin=*]
+  \item compteurs (utilisateurs, pointages, congés),
+  \item graphique pointages (7 jours),
+  \item distribution des congés par statut (pie chart),
+  \item design modernisé (cartes, gradients).
+\end{itemize}
+
+\subsection{Filtres avancés et rapports}
+\begin{itemize}[leftmargin=*]
+  \item Historique employé : filtres (type, mois), KPIs (retards/absences/présence), export \textbf{CSV}.
+  \item Liste employés admin : recherche multi-champs + tri + export \textbf{CSV}.
+  \item Rapport pointage admin : filtres + export \textbf{CSV}.
+\end{itemize}
+
+\subsection{Détection d’anomalies (MVP + base)}
+Le projet inclut une première détection visuelle côté historique (retards/anomalies).\\
+Les règles exactes « heures < seuil 8h/jour » sont prévues en extension (voir \S 11).
+
+\section{Interfaces utilisateur (réalisées)}
+\subsection{Espace Employé}
+\begin{itemize}[leftmargin=*]
+  \item Connexion
+  \item Pointage (GPS + QR)
+  \item Historique personnel + KPIs + export
+  \item Demande de congé
+  \item Profil employé (édition)
+  \item Navigation responsive (hamburger menu)
+  \item \textbf{Light/Dark mode}
+\end{itemize}
+
+\subsection{Espace Admin}
+\begin{itemize}[leftmargin=*]
+  \item Dashboard analytique (charts)
+  \item Liste employés (profil complet + tri)
+  \item Gestion congés (valider/refuser)
+  \item Rapport pointage (export)
+  \item Navigation responsive (hamburger menu)
+  \item \textbf{Light/Dark mode}
+\end{itemize}
+
+\section{Sécurité (réalisée)}
+Conforme aux attentes :
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Authentification requise} pour les zones applicatives.
+  \item Validation backend obligatoire pour le \textbf{pointage} :
+  \begin{itemize}
+    \item QR token,
+    \item zone GPS.
+  \end{itemize}
+  \item Contrôle d’accès par \textbf{Firestore Rules} (lecture utilisateur, actions admin).
+\end{itemize}
+
+Points clés :
+\begin{itemize}[leftmargin=*]
+  \item Le rôle admin/employé est stocké en base et utilisé pour autoriser/filtrer les pages.
+  \item Le QR code peut être « rotatif » via simple changement de token côté configuration (paramètres functions).
+\end{itemize}
+
+\section{Contraintes techniques (réalisées)}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Responsive design} (mobile obligatoire) : réalisé avec menus mobiles.
+  \item Performance / UX :
+  \begin{itemize}
+    \item géolocalisation optimisée,
+    \item scans et toasts stabilisés,
+    \item requêtes Firestore limitées (ex. 7 jours via \texttt{where(in)}).
+  \end{itemize}
+\end{itemize}
+
+Temps réel / WebSocket :
+\begin{itemize}[leftmargin=*]
+  \item présent comme piste (socket.io dépendance), mais non requis pour le MVP.
+\end{itemize}
+
+\section{Tests et validation}
+\subsection{Tests fonctionnels (manuel)}
+\begin{itemize}[leftmargin=*]
+  \item Création compte + connexion.
+  \item Pointage : GPS OK/KO + QR OK/KO.
+  \item Congés : création employé, validation/refus admin.
+  \item Dashboard : KPI + graphiques.
+  \item Exports CSV : admin et employé.
+  \item Responsive : mobile + hamburger menu.
+  \item Thème : light/dark toggle.
+\end{itemize}
+
+\subsection{Qualité}
+\begin{itemize}[leftmargin=*]
+  \item ESLint intégré et vérifié.
+\end{itemize}
+
+\section{Déploiement \& exécution}
+\subsection{Lancement local (frontend)}
+\begin{lstlisting}[style=bash]
+npm install
+npm run dev
+\end{lstlisting}
+
+\subsection{Fonctions (émulateur)}
+\begin{lstlisting}[style=bash]
+cd functions
+npm install
+npm run serve
+\end{lstlisting}
+
+\begin{quote}
+Note : le déploiement Functions v2 peut nécessiter un plan Firebase adapté (Blaze) selon le contexte. L’émulateur reste la solution locale recommandée.
+\end{quote}
+
+\section{Évolutions et recommandations (professionnelles)}
+\subsection{Simplification “pro” de l’inscription (recommandée)}
+Pour supprimer les problèmes de synchronisation rôle/profil après inscription :
+\begin{itemize}[leftmargin=*]
+  \item ajouter une Cloud Function \textbf{Auth Trigger} \texttt{onCreate} qui crée systématiquement \texttt{users/\{uid\}},
+  \item ne plus écrire \texttt{users/\{uid\}} depuis le client,
+  \item simplifier les Firestore Rules (moins permissives).
+\end{itemize}
+
+\subsection{Détection d’anomalies avancée}
+\begin{itemize}[leftmargin=*]
+  \item agrégation « heures/jour < 8h »,
+  \item retards configurables,
+  \item sorties anticipées basées sur planning.
+\end{itemize}
+
+\subsection{Exports}
+\begin{itemize}[leftmargin=*]
+  \item Export \textbf{PDF / Excel} côté admin.
+\end{itemize}
+
+\subsection{Renforcement sécurité}
+\begin{itemize}[leftmargin=*]
+  \item rotation programmée du QR token,
+  \item logs d’audit (admin actions),
+  \item rate limiting (anti-spam pointage).
+\end{itemize}
+
+\section{Conclusion}
+Le projet TimeTrack Pro fournit une application web moderne répondant au cahier des charges :
+\begin{itemize}[leftmargin=*]
+  \item pointage intelligent (GPS + QR + validation backend),
+  \item gestion des congés employé/admin,
+  \item dashboard analytique avec graphiques,
+  \item filtres, exports, détection d’anomalies (MVP),
+  \item interface responsive et thème light/dark,
+  \item architecture sécurisée et évolutive.
+\end{itemize}
+
+\section*{Annexes (à compléter si demandé)}
+\begin{itemize}[leftmargin=*]
+  \item Diagrammes UML (cas d’utilisation, séquence pointage, MCD/collections).
+  \item Captures d’écran des interfaces.
+  \item Démo vidéo / lien repo GitHub.
+\end{itemize}
+
+\end{document}
+

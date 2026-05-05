@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { getUserRole } from "@/lib/firestore-helpers";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -75,6 +76,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-muted/50 px-4">
+      <div className="mb-6">
+        <BrandLogo size="lg" />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
