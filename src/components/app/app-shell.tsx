@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const navItems = [
   { href: "/pointage", label: "Pointer" },
@@ -77,6 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {user ? (
               <>
                 <div className="hidden text-sm text-muted-foreground md:block">
@@ -106,14 +108,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="absolute left-0 top-0 h-full w-[min(320px,90vw)] border-r bg-background p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <div className="font-semibold">Menu</div>
-              <button
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border bg-background text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Fermer"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border bg-background text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Fermer"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="mt-4 flex flex-col gap-1">
