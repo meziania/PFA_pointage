@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { onUserCreated } from "firebase-functions/v2/identity";
+import * as functions from "firebase-functions/v1";
 import { defineString } from "firebase-functions/params";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
@@ -17,8 +17,7 @@ const qrToken = defineString("POINTAGE_QR_TOKEN");
 
 type PointageType = "entree" | "sortie";
 
-export const onAuthUserCreated = onUserCreated(async (event) => {
-  const user = event.data;
+export const onAuthUserCreated = functions.region("europe-west1").auth.user().onCreate(async (user) => {
   if (!user?.uid) return;
 
   const uid = user.uid;
