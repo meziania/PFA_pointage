@@ -1,0 +1,399 @@
+[debug] [2026-05-07T18:14:24.342Z] ----------------------------------------------------------------------
+[debug] [2026-05-07T18:14:24.361Z] Command:       c:\Users\Abderrahmane MEZIANI\AppData\Local\Programs\cursor\resources\app\resources\helpers\node.exe C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions --project systempointage-88b6e
+[debug] [2026-05-07T18:14:24.362Z] CLI Version:   15.17.0
+[debug] [2026-05-07T18:14:24.362Z] Platform:      win32
+[debug] [2026-05-07T18:14:24.362Z] Node Version:  v22.22.0
+[debug] [2026-05-07T18:14:24.363Z] Time:          Thu May 07 2026 19:14:24 GMT+0100 (UTC+01:00)
+[debug] [2026-05-07T18:14:24.363Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-07T18:14:26.438Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-07T18:14:26.439Z] > authorizing via signed-in user (a.meziani.dev@gmail.com)
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[debug] [2026-05-07T18:14:26.463Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:14:26.463Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-05-07T18:14:26.479Z] Found emulator hub locator: {"version":"15.17.0","origins":["http://127.0.0.1:4400","http://[::1]:4400"],"pid":12608}
+[debug] [2026-05-07T18:14:26.480Z] Write emulator hub locator at C:\Users\ABDERR~1\AppData\Local\Temp\hub-systempointage-88b6e.json
+[debug] [2026-05-07T18:14:26.501Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:14:26.501Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:14:26.501Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:14:26.501Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect"}}
+[debug] [2026-05-07T18:14:26.526Z] defaultcredentials: writing to file C:\Users\Abderrahmane MEZIANI\AppData\Roaming\firebase\a_meziani.dev_gmail.com_application_default_credentials.json
+[debug] [2026-05-07T18:14:26.533Z] Setting GAC to C:\Users\Abderrahmane MEZIANI\AppData\Roaming\firebase\a_meziani.dev_gmail.com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\Abderrahmane MEZIANI\\AppData\\Roaming\\firebase\\a_meziani.dev_gmail.com_application_default_credentials.json"}}
+[debug] [2026-05-07T18:14:26.535Z] Checked if tokens are valid: true, expires at: 1778181124016
+[debug] [2026-05-07T18:14:26.535Z] Checked if tokens are valid: true, expires at: 1778181124016
+[debug] [2026-05-07T18:14:26.537Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/systempointage-88b6e/adminSdkConfig [none]
+[debug] [2026-05-07T18:14:26.984Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/systempointage-88b6e/adminSdkConfig 200
+[debug] [2026-05-07T18:14:26.984Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/systempointage-88b6e/adminSdkConfig {"projectId":"systempointage-88b6e","databaseURL":"https://systempointage-88b6e-default-rtdb.europe-west1.firebasedatabase.app","storageBucket":"systempointage-88b6e.firebasestorage.app"}
+[info] i  functions: Watching "C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\" for Cloud Functions..."}}
+[debug] [2026-05-07T18:14:27.039Z] Validating nodejs source
+[debug] [2026-05-07T18:14:37.066Z] checkFunctionsSDKVersion was unable to fetch information from NPM Error: spawnSync C:\WINDOWS\system32\cmd.exe ETIMEDOUT
+    at Object.spawnSync (node:internal/child_process:1120:20)
+    at Object.spawnSync (node:child_process:902:24)
+    at Function.spawnSync [as sync] (C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\cross-spawn\index.js:26:23)
+    at Object.getLatestSDKVersion (C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\versioning.js:55:25)
+    at Object.checkFunctionsSDKVersion (C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\versioning.js:74:32)
+    at Delegate.validate (C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\index.js:88:20)
+    at FunctionsEmulator.discoverTriggers (C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\functionsEmulator.js:352:35)
+    at async FunctionsEmulator.loadTriggers (C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\functionsEmulator.js:399:34)
+    at async FunctionsEmulator.connect (C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\functionsEmulator.js:274:13)
+    at async Object.startAll (C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\controller.js:695:13)
+[debug] [2026-05-07T18:14:37.067Z] > [functions] package.json contents: {
+  "name": "gestion-de-pointage-functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "serve": "npm run build && npx firebase-tools emulators:start --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^6.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
+[debug] [2026-05-07T18:14:37.067Z] Building nodejs source
+[debug] [2026-05-07T18:14:37.068Z] Failed to find version of module node: reached end of search path C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "22". Using node@22 from host. 
+[info] i  functions: Loaded environment variables from .env.systempointage-88b6e. 
+[debug] [2026-05-07T18:14:37.072Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-07T18:14:37.080Z] Found firebase-functions binary at 'C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8436
+
+[error] !!  functions: Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization' {"metadata":{"emulator":{"name":"functions"},"message":"Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization'"}}
+[debug] [2026-05-07T18:15:01.148Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌───────────┬────────────────┬─────────────────────────────────┐
+│ Emulator  │ Host:Port      │ View in Emulator UI             │
+├───────────┼────────────────┼─────────────────────────────────┤
+│ Functions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions │
+└───────────┴────────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-05-07T18:18:28.546Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:18:28.546Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:18:28.547Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:18:28.546Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:18:28.553Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:19:42.676Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:19:42.676Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:19:42.677Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:19:42.676Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:19:42.678Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:19:44.125Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:19:44.125Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:19:44.126Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:19:44.125Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:19:44.127Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:19:47.971Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:19:47.971Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:19:47.972Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:19:47.971Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:19:47.974Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:20:08.698Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:20:08.698Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:20:08.698Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:20:08.698Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:20:08.699Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:20:09.671Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:20:09.671Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:20:09.671Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:20:09.671Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:20:09.671Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:20:16.084Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:20:16.084Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:20:16.084Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:20:16.084Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:20:16.085Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:23:04.506Z] ----------------------------------------------------------------------
+[debug] [2026-05-07T18:23:04.510Z] Command:       c:\Users\Abderrahmane MEZIANI\AppData\Local\Programs\cursor\resources\app\resources\helpers\node.exe C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions --project systempointage-88b6e --debug
+[debug] [2026-05-07T18:23:04.510Z] CLI Version:   15.17.0
+[debug] [2026-05-07T18:23:04.510Z] Platform:      win32
+[debug] [2026-05-07T18:23:04.511Z] Node Version:  v22.22.0
+[debug] [2026-05-07T18:23:04.511Z] Time:          Thu May 07 2026 19:23:04 GMT+0100 (UTC+01:00)
+[debug] [2026-05-07T18:23:04.511Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-07T18:23:06.406Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-07T18:23:06.406Z] > authorizing via signed-in user (a.meziani.dev@gmail.com)
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[warn] !  hub: emulator hub unable to start on port 4400, starting on 4401 instead. {"metadata":{"emulator":{"name":"hub"},"message":"emulator hub unable to start on port 4400, starting on 4401 instead."}}
+[warn] !  ui: Emulator UI unable to start on port 4000, starting on 4001 instead. {"metadata":{"emulator":{"name":"ui"},"message":"Emulator UI unable to start on port 4000, starting on 4001 instead."}}
+[warn] !  logging: Logging Emulator unable to start on port 4500, starting on 4501 instead. {"metadata":{"emulator":{"name":"logging"},"message":"Logging Emulator unable to start on port 4500, starting on 4501 instead."}}
+[debug] [2026-05-07T18:23:06.418Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:23:06.418Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4401},{"address":"::1","family":"IPv6","port":4401}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4001},{"address":"::1","family":"IPv6","port":4001}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4501}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-05-07T18:23:06.425Z] Found emulator hub locator: {"version":"15.17.0","origins":["http://127.0.0.1:4400","http://[::1]:4400"],"pid":21076}
+[warn] !  emulators: It seems that you are running multiple instances of the emulator suite for project systempointage-88b6e. This may result in unexpected behavior. 
+[warn] !  functions: Port 5001 is not open on localhost (127.0.0.1), could not start Functions Emulator. {"metadata":{"emulator":{"name":"functions"},"message":"Port 5001 is not open on localhost (127.0.0.1), could not start Functions Emulator."}}
+[warn] !  functions: To select a different host/port, specify that host/port in a firebase.json config file:
+      {
+        // ...
+        "emulators": {
+          "functions": {
+            "host": "HOST",
+            "port": "PORT"
+          }
+        }
+      } {"metadata":{"emulator":{"name":"functions"},"message":"To select a different host/port, specify that host/port in a firebase.json config file:\n      {\n        // ...\n        \"emulators\": {\n          \"functions\": {\n            \"host\": \"HOST\",\n            \"port\": \"PORT\"\n          }\n        }\n      }"}}
+[warn] !  eventarc: Eventarc Emulator unable to start on port 9299, starting on 9300 instead. {"metadata":{"emulator":{"name":"eventarc"},"message":"Eventarc Emulator unable to start on port 9299, starting on 9300 instead."}}
+[debug] [2026-05-07T18:23:06.447Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[warn] !  tasks: Cloud Tasks Emulator unable to start on port 9499, starting on 9500 instead. {"metadata":{"emulator":{"name":"tasks"},"message":"Cloud Tasks Emulator unable to start on port 9499, starting on 9500 instead."}}
+[debug] [2026-05-07T18:23:06.447Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:23:06.452Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[info] i  emulators: Shutting down emulators. {"metadata":{"emulator":{"name":"hub"},"message":"Shutting down emulators."}}
+[info] i  hub: Stopping emulator hub {"metadata":{"emulator":{"name":"hub"},"message":"Stopping emulator hub"}}
+[debug] [2026-05-07T18:23:06.456Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[error] 
+[error] Error: Could not start Functions Emulator, port taken.
+[debug] [2026-05-07T18:23:55.130Z] ----------------------------------------------------------------------
+[debug] [2026-05-07T18:23:55.133Z] Command:       c:\Users\Abderrahmane MEZIANI\AppData\Local\Programs\cursor\resources\app\resources\helpers\node.exe C:\Users\Abderrahmane MEZIANI\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions --project systempointage-88b6e
+[debug] [2026-05-07T18:23:55.134Z] CLI Version:   15.17.0
+[debug] [2026-05-07T18:23:55.134Z] Platform:      win32
+[debug] [2026-05-07T18:23:55.135Z] Node Version:  v22.22.0
+[debug] [2026-05-07T18:23:55.135Z] Time:          Thu May 07 2026 19:23:55 GMT+0100 (UTC+01:00)
+[debug] [2026-05-07T18:23:55.135Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-07T18:23:56.862Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-07T18:23:56.862Z] > authorizing via signed-in user (a.meziani.dev@gmail.com)
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[debug] [2026-05-07T18:23:56.872Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:23:56.872Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-05-07T18:23:56.877Z] Found emulator hub locator: {"version":"15.17.0","origins":["http://127.0.0.1:4400","http://[::1]:4400"],"pid":21076}
+[debug] [2026-05-07T18:23:56.878Z] Write emulator hub locator at C:\Users\ABDERR~1\AppData\Local\Temp\hub-systempointage-88b6e.json
+[debug] [2026-05-07T18:23:56.896Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:23:56.896Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:23:56.896Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-07T18:23:56.896Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect"}}
+[debug] [2026-05-07T18:23:56.914Z] defaultcredentials: writing to file C:\Users\Abderrahmane MEZIANI\AppData\Roaming\firebase\a_meziani.dev_gmail.com_application_default_credentials.json
+[debug] [2026-05-07T18:23:56.915Z] Setting GAC to C:\Users\Abderrahmane MEZIANI\AppData\Roaming\firebase\a_meziani.dev_gmail.com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\Abderrahmane MEZIANI\\AppData\\Roaming\\firebase\\a_meziani.dev_gmail.com_application_default_credentials.json"}}
+[debug] [2026-05-07T18:23:56.917Z] Checked if tokens are valid: true, expires at: 1778181124016
+[debug] [2026-05-07T18:23:56.917Z] Checked if tokens are valid: true, expires at: 1778181124016
+[debug] [2026-05-07T18:23:56.918Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/systempointage-88b6e/adminSdkConfig [none]
+[debug] [2026-05-07T18:23:57.380Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/systempointage-88b6e/adminSdkConfig 200
+[debug] [2026-05-07T18:23:57.381Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/systempointage-88b6e/adminSdkConfig {"projectId":"systempointage-88b6e","databaseURL":"https://systempointage-88b6e-default-rtdb.europe-west1.firebasedatabase.app","storageBucket":"systempointage-88b6e.firebasestorage.app"}
+[info] i  functions: Watching "C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\" for Cloud Functions..."}}
+[debug] [2026-05-07T18:23:57.419Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-05-07T18:23:58.325Z] > [functions] package.json contents: {
+  "name": "gestion-de-pointage-functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "serve": "npm run build && npx firebase-tools emulators:start --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^6.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
+[debug] [2026-05-07T18:23:58.325Z] Building nodejs source
+[debug] [2026-05-07T18:23:58.325Z] Failed to find version of module node: reached end of search path C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "22". Using node@22 from host. 
+[info] i  functions: Loaded environment variables from .env.systempointage-88b6e. 
+[debug] [2026-05-07T18:23:58.328Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-07T18:23:58.337Z] Found firebase-functions binary at 'C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8373
+
+[debug] [2026-05-07T18:23:59.218Z] Got response from /__/functions.yaml {"endpoints":{"onAuthUserCreated":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"region":["europe-west1"],"eventTrigger":{"eventType":"providers/firebase.auth/eventTypes/user.create","eventFilters":{"resource":"projects/systempointage-88b6e"},"retry":false},"labels":{},"entryPoint":"onAuthUserCreated"},"createPointage":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["europe-west1"],"labels":{},"callableTrigger":{},"entryPoint":"createPointage"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{},"params":[{"name":"ORG_LAT","type":"string"},{"name":"ORG_LON","type":"string"},{"name":"ORG_RADIUS_M","type":"string"},{"name":"POINTAGE_QR_TOKEN","type":"string"}]}
+[info] +  functions: Loaded functions definitions from source: onAuthUserCreated, createPointage. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: onAuthUserCreated, createPointage."}}
+[debug] [2026-05-07T18:24:03.288Z] addAuthTrigger {"eventTrigger":{"eventType":"providers/firebase.auth/eventTypes/user.create","resource":"projects/systempointage-88b6e"}}
+[info] +  functions[europe-west1-onAuthUserCreated]: auth function initialized. {"metadata":{"emulator":{"name":"functions"},"message":"auth function initialized."}}
+[info] +  functions[europe-west1-createPointage]: http function initialized (http://127.0.0.1:5001/systempointage-88b6e/europe-west1/createPointage). {"metadata":{"emulator":{"name":"functions"},"message":"http function initialized (http://127.0.0.1:5001/systempointage-88b6e/europe-west1/createPointage)."}}
+[debug] [2026-05-07T18:24:03.303Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌───────────┬────────────────┬─────────────────────────────────┐
+│ Emulator  │ Host:Port      │ View in Emulator UI             │
+├───────────┼────────────────┼─────────────────────────────────┤
+│ Functions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions │
+└───────────┴────────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-05-07T18:24:57.570Z] File C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions\lib\index.js changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\lib\\index.js changed, reloading triggers"}}
+[debug] [2026-05-07T18:24:58.577Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-05-07T18:24:59.652Z] > [functions] package.json contents: {
+  "name": "gestion-de-pointage-functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "serve": "npm run build && npx firebase-tools emulators:start --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^6.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
+[debug] [2026-05-07T18:24:59.652Z] Building nodejs source
+[debug] [2026-05-07T18:24:59.652Z] Failed to find version of module node: reached end of search path C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "22". Using node@22 from host. 
+[info] i  functions: Loaded environment variables from .env.systempointage-88b6e. 
+[debug] [2026-05-07T18:24:59.654Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-07T18:24:59.664Z] Found firebase-functions binary at 'C:\Users\Abderrahmane MEZIANI\Documents\GitHub\gestion-de-pointage\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8832
+
+[debug] [2026-05-07T18:25:00.774Z] Got response from /__/functions.yaml {"endpoints":{"onAuthUserCreated":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/firebase.auth/eventTypes/user.create","eventFilters":{"resource":"projects/systempointage-88b6e"},"retry":false},"labels":{},"entryPoint":"onAuthUserCreated"},"rotatePointageQrWeekly":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["europe-west1"],"labels":{},"callableTrigger":{},"entryPoint":"rotatePointageQrWeekly"},"scheduledRotatePointageQrWeekly":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["europe-west1"],"labels":{},"scheduleTrigger":{"schedule":"every monday 08:00","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetrySeconds":null,"minBackoffSeconds":null,"maxBackoffSeconds":null},"timeZone":null},"entryPoint":"scheduledRotatePointageQrWeekly"},"notifyEmployeesNewQr":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["europe-west1"],"labels":{},"callableTrigger":{},"entryPoint":"notifyEmployeesNewQr"},"createPointage":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["europe-west1"],"labels":{},"callableTrigger":{},"entryPoint":"createPointage"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}],"extensions":{},"params":[{"name":"ORG_LAT","type":"string"},{"name":"ORG_LON","type":"string"},{"name":"ORG_RADIUS_M","type":"string"},{"name":"POINTAGE_QR_TOKEN","type":"string"}]}
+[info] +  functions: Loaded functions definitions from source: onAuthUserCreated, rotatePointageQrWeekly, scheduledRotatePointageQrWeekly, notifyEmployeesNewQr, createPointage. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: onAuthUserCreated, rotatePointageQrWeekly, scheduledRotatePointageQrWeekly, notifyEmployeesNewQr, createPointage."}}
+[info] +  functions[europe-west1-rotatePointageQrWeekly]: http function initialized (http://127.0.0.1:5001/systempointage-88b6e/europe-west1/rotatePointageQrWeekly). {"metadata":{"emulator":{"name":"functions"},"message":"http function initialized (http://127.0.0.1:5001/systempointage-88b6e/europe-west1/rotatePointageQrWeekly)."}}
+[info] i  functions[europe-west1-scheduledRotatePointageQrWeekly]: function ignored because the pubsub emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the pubsub emulator does not exist or is not running."}}
+[info] +  functions[europe-west1-notifyEmployeesNewQr]: http function initialized (http://127.0.0.1:5001/systempointage-88b6e/europe-west1/notifyEmployeesNewQr). {"metadata":{"emulator":{"name":"functions"},"message":"http function initialized (http://127.0.0.1:5001/systempointage-88b6e/europe-west1/notifyEmployeesNewQr)."}}
+[debug] [2026-05-07T18:26:08.903Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:26:08.903Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:26:08.903Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:26:08.903Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:26:08.904Z] Accepted request OPTIONS /systempointage-88b6e/europe-west1/rotatePointageQrWeekly --> europe-west1-rotatePointageQrWeekly
+[debug] [2026-05-07T18:26:08.906Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-05-07T18:26:08.907Z] [functions] Got req.url=/systempointage-88b6e/europe-west1/rotatePointageQrWeekly, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/systempointage-88b6e/europe-west1/rotatePointageQrWeekly, mapping to path=/"}}
+[info] i  functions: Loaded environment variables from .env.systempointage-88b6e. 
+[debug] [2026-05-07T18:26:08.923Z] [worker-pool] addWorker(europe-west1-rotatePointageQrWeekly) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(europe-west1-rotatePointageQrWeekly)"}}
+[debug] [2026-05-07T18:26:08.924Z] [worker-pool] Adding worker with key europe-west1-rotatePointageQrWeekly, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key europe-west1-rotatePointageQrWeekly, total=1"}}
+[debug] [2026-05-07T18:26:10.639Z] [runtime-status] [25840] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:10.640Z] [runtime-status] [25840] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:10.641Z] [runtime-status] [25840] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-05-07T18:26:10.642Z] [runtime-status] [25840] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:10.985Z] [runtime-status] [25840] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:11.063Z] [runtime-status] [25840] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:11.296Z] [runtime-status] [25840] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-05-07T18:26:11.332Z] [runtime-status] [25840] Functions runtime initialized. {"cwd":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions","node_version":"22.22.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\",\"node_version\":\"22.22.0\"}"}}
+[debug] [2026-05-07T18:26:11.332Z] [runtime-status] [25840] Listening to port: \\?\pipe\fire_emu_055ceb6e846d2ef5 {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[runtime-status] [25840] Listening to port: \\\\?\\pipe\\fire_emu_055ceb6e846d2ef5"}}
+[debug] [2026-05-07T18:26:11.439Z] [worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: IDLE"}}
+[debug] [2026-05-07T18:26:11.439Z] [worker-pool] submitRequest(triggerId=europe-west1-rotatePointageQrWeekly) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=europe-west1-rotatePointageQrWeekly)"}}
+[info] i  functions: Beginning execution of "europe-west1-rotatePointageQrWeekly" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Beginning execution of \"europe-west1-rotatePointageQrWeekly\""}}
+[debug] [2026-05-07T18:26:11.441Z] [worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: BUSY"}}
+[debug] [2026-05-07T18:26:11.451Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "europe-west1-rotatePointageQrWeekly" in 10.5062ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Finished \"europe-west1-rotatePointageQrWeekly\" in 10.5062ms"}}
+[debug] [2026-05-07T18:26:11.451Z] [worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: IDLE"}}
+[debug] [2026-05-07T18:26:11.451Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-05-07T18:26:11.452Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-05-07T18:26:11.452Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:26:11.453Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:26:11.453Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:26:11.453Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/rotatePointageQrWeekly-2026-05-07T18:26:11.453Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:26:11.453Z] Accepted request POST /systempointage-88b6e/europe-west1/rotatePointageQrWeekly --> europe-west1-rotatePointageQrWeekly
+[debug] [2026-05-07T18:26:11.454Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-05-07T18:26:11.454Z] [functions] Got req.url=/systempointage-88b6e/europe-west1/rotatePointageQrWeekly, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/systempointage-88b6e/europe-west1/rotatePointageQrWeekly, mapping to path=/"}}
+[debug] [2026-05-07T18:26:11.454Z] [worker-pool] submitRequest(triggerId=europe-west1-rotatePointageQrWeekly) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=europe-west1-rotatePointageQrWeekly)"}}
+[info] i  functions: Beginning execution of "europe-west1-rotatePointageQrWeekly" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Beginning execution of \"europe-west1-rotatePointageQrWeekly\""}}
+[debug] [2026-05-07T18:26:11.454Z] [worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: BUSY"}}
+[info] >  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"} {"user":{"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"},"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":">  {\"verifications\":{\"app\":\"MISSING\",\"auth\":\"VALID\"},\"logging.googleapis.com/labels\":{\"firebase-log-type\":\"callable-request-verification\"},\"severity\":\"DEBUG\",\"message\":\"Callable request verification passed\"}"}}
+[warn] !  Google API requested!
+   - URL: "https://oauth2.googleapis.com/token"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Google API requested!\n   - URL: \"https://oauth2.googleapis.com/token\"\n   - Be careful, this may be a production service."}}
+[debug] [2026-05-07T18:26:20.579Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "europe-west1-rotatePointageQrWeekly" in 9124.7669ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Finished \"europe-west1-rotatePointageQrWeekly\" in 9124.7669ms"}}
+[debug] [2026-05-07T18:26:20.580Z] [worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"[worker-europe-west1-rotatePointageQrWeekly-1d8e732c-6fcd-4c63-a329-a9f67aa58ef7]: IDLE"}}
+[debug] [2026-05-07T18:26:20.580Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-05-07T18:26:20.580Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-rotatePointageQrWeekly"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-05-07T18:26:20.581Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:26:41.693Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/notifyEmployeesNewQr-2026-05-07T18:26:41.693Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:26:41.694Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/notifyEmployeesNewQr-2026-05-07T18:26:41.693Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:26:41.694Z] Accepted request OPTIONS /systempointage-88b6e/europe-west1/notifyEmployeesNewQr --> europe-west1-notifyEmployeesNewQr
+[debug] [2026-05-07T18:26:41.702Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-05-07T18:26:41.703Z] [functions] Got req.url=/systempointage-88b6e/europe-west1/notifyEmployeesNewQr, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/systempointage-88b6e/europe-west1/notifyEmployeesNewQr, mapping to path=/"}}
+[info] i  functions: Loaded environment variables from .env.systempointage-88b6e. 
+[debug] [2026-05-07T18:26:41.718Z] [worker-pool] addWorker(europe-west1-notifyEmployeesNewQr) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(europe-west1-notifyEmployeesNewQr)"}}
+[debug] [2026-05-07T18:26:41.719Z] [worker-pool] Adding worker with key europe-west1-notifyEmployeesNewQr, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key europe-west1-notifyEmployeesNewQr, total=1"}}
+[debug] [2026-05-07T18:26:42.943Z] [runtime-status] [9500] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:42.945Z] [runtime-status] [9500] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:42.945Z] [runtime-status] [9500] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-05-07T18:26:42.946Z] [runtime-status] [9500] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:43.219Z] [runtime-status] [9500] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:43.222Z] [runtime-status] [9500] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:26:43.407Z] [runtime-status] [9500] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-05-07T18:26:43.433Z] [runtime-status] [9500] Functions runtime initialized. {"cwd":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions","node_version":"22.22.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\",\"node_version\":\"22.22.0\"}"}}
+[debug] [2026-05-07T18:26:43.433Z] [runtime-status] [9500] Listening to port: \\?\pipe\fire_emu_332d616fccc97997 {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[runtime-status] [9500] Listening to port: \\\\?\\pipe\\fire_emu_332d616fccc97997"}}
+[debug] [2026-05-07T18:26:43.481Z] [worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: IDLE"}}
+[debug] [2026-05-07T18:26:43.482Z] [worker-pool] submitRequest(triggerId=europe-west1-notifyEmployeesNewQr) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=europe-west1-notifyEmployeesNewQr)"}}
+[info] i  functions: Beginning execution of "europe-west1-notifyEmployeesNewQr" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Beginning execution of \"europe-west1-notifyEmployeesNewQr\""}}
+[debug] [2026-05-07T18:26:43.482Z] [worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: BUSY"}}
+[debug] [2026-05-07T18:26:43.488Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "europe-west1-notifyEmployeesNewQr" in 6.3693ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Finished \"europe-west1-notifyEmployeesNewQr\" in 6.3693ms"}}
+[debug] [2026-05-07T18:26:43.489Z] [worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: IDLE"}}
+[debug] [2026-05-07T18:26:43.489Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-05-07T18:26:43.489Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-05-07T18:26:43.489Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:26:43.491Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/notifyEmployeesNewQr-2026-05-07T18:26:43.491Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:26:43.491Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/notifyEmployeesNewQr-2026-05-07T18:26:43.491Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:26:43.491Z] Accepted request POST /systempointage-88b6e/europe-west1/notifyEmployeesNewQr --> europe-west1-notifyEmployeesNewQr
+[debug] [2026-05-07T18:26:43.492Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-05-07T18:26:43.492Z] [functions] Got req.url=/systempointage-88b6e/europe-west1/notifyEmployeesNewQr, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/systempointage-88b6e/europe-west1/notifyEmployeesNewQr, mapping to path=/"}}
+[debug] [2026-05-07T18:26:43.492Z] [worker-pool] submitRequest(triggerId=europe-west1-notifyEmployeesNewQr) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=europe-west1-notifyEmployeesNewQr)"}}
+[info] i  functions: Beginning execution of "europe-west1-notifyEmployeesNewQr" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Beginning execution of \"europe-west1-notifyEmployeesNewQr\""}}
+[debug] [2026-05-07T18:26:43.493Z] [worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: BUSY"}}
+[info] >  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"} {"user":{"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"},"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":">  {\"verifications\":{\"app\":\"MISSING\",\"auth\":\"VALID\"},\"logging.googleapis.com/labels\":{\"firebase-log-type\":\"callable-request-verification\"},\"severity\":\"DEBUG\",\"message\":\"Callable request verification passed\"}"}}
+[warn] !  Google API requested!
+   - URL: "https://oauth2.googleapis.com/token"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Google API requested!\n   - URL: \"https://oauth2.googleapis.com/token\"\n   - Be careful, this may be a production service."}}
+[debug] [2026-05-07T18:26:44.763Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "europe-west1-notifyEmployeesNewQr" in 1270.4309ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Finished \"europe-west1-notifyEmployeesNewQr\" in 1270.4309ms"}}
+[debug] [2026-05-07T18:26:44.764Z] [worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"[worker-europe-west1-notifyEmployeesNewQr-3209551c-cded-4939-9416-660a3b7fac33]: IDLE"}}
+[debug] [2026-05-07T18:26:44.764Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-05-07T18:26:44.764Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-notifyEmployeesNewQr"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-05-07T18:26:44.764Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:27:38.410Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/createPointage-2026-05-07T18:27:38.410Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:27:38.410Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/createPointage-2026-05-07T18:27:38.410Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:27:38.410Z] Accepted request OPTIONS /systempointage-88b6e/europe-west1/createPointage --> europe-west1-createPointage
+[debug] [2026-05-07T18:27:38.413Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-05-07T18:27:38.414Z] [functions] Got req.url=/systempointage-88b6e/europe-west1/createPointage, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/systempointage-88b6e/europe-west1/createPointage, mapping to path=/"}}
+[info] i  functions: Loaded environment variables from .env.systempointage-88b6e. 
+[debug] [2026-05-07T18:27:38.423Z] [worker-pool] addWorker(europe-west1-createPointage) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(europe-west1-createPointage)"}}
+[debug] [2026-05-07T18:27:38.423Z] [worker-pool] Adding worker with key europe-west1-createPointage, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key europe-west1-createPointage, total=1"}}
+[debug] [2026-05-07T18:27:39.803Z] [runtime-status] [11284] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-05-07T18:27:39.806Z] [runtime-status] [11284] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:27:39.806Z] [runtime-status] [11284] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-05-07T18:27:39.808Z] [runtime-status] [11284] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:27:40.119Z] [runtime-status] [11284] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-05-07T18:27:40.123Z] [runtime-status] [11284] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.6.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.6.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-05-07T18:27:40.315Z] [runtime-status] [11284] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.8.0","resolution":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.8.0\",\"resolution\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-05-07T18:27:40.347Z] [runtime-status] [11284] Functions runtime initialized. {"cwd":"C:\\Users\\Abderrahmane MEZIANI\\Documents\\GitHub\\gestion-de-pointage\\functions","node_version":"22.22.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\Abderrahmane MEZIANI\\\\Documents\\\\GitHub\\\\gestion-de-pointage\\\\functions\",\"node_version\":\"22.22.0\"}"}}
+[debug] [2026-05-07T18:27:40.347Z] [runtime-status] [11284] Listening to port: \\?\pipe\fire_emu_f337509eb7a1dd65 {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[runtime-status] [11284] Listening to port: \\\\?\\pipe\\fire_emu_f337509eb7a1dd65"}}
+[debug] [2026-05-07T18:27:40.403Z] [worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: IDLE"}}
+[debug] [2026-05-07T18:27:40.404Z] [worker-pool] submitRequest(triggerId=europe-west1-createPointage) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=europe-west1-createPointage)"}}
+[info] i  functions: Beginning execution of "europe-west1-createPointage" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Beginning execution of \"europe-west1-createPointage\""}}
+[debug] [2026-05-07T18:27:40.404Z] [worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: BUSY"}}
+[debug] [2026-05-07T18:27:40.410Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "europe-west1-createPointage" in 6.2922ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Finished \"europe-west1-createPointage\" in 6.2922ms"}}
+[debug] [2026-05-07T18:27:40.411Z] [worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: IDLE"}}
+[debug] [2026-05-07T18:27:40.411Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-05-07T18:27:40.411Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-05-07T18:27:40.411Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:27:40.413Z] [work-queue] {"queuedWork":["/systempointage-88b6e/europe-west1/createPointage-2026-05-07T18:27:40.413Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-05-07T18:27:40.413Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/systempointage-88b6e/europe-west1/createPointage-2026-05-07T18:27:40.413Z"],"workRunningCount":1}
+[debug] [2026-05-07T18:27:40.413Z] Accepted request POST /systempointage-88b6e/europe-west1/createPointage --> europe-west1-createPointage
+[debug] [2026-05-07T18:27:40.414Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-05-07T18:27:40.414Z] [functions] Got req.url=/systempointage-88b6e/europe-west1/createPointage, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/systempointage-88b6e/europe-west1/createPointage, mapping to path=/"}}
+[debug] [2026-05-07T18:27:40.414Z] [worker-pool] submitRequest(triggerId=europe-west1-createPointage) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=europe-west1-createPointage)"}}
+[info] i  functions: Beginning execution of "europe-west1-createPointage" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Beginning execution of \"europe-west1-createPointage\""}}
+[debug] [2026-05-07T18:27:40.415Z] [worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: BUSY"}}
+[info] >  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"} {"user":{"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"},"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":">  {\"verifications\":{\"app\":\"MISSING\",\"auth\":\"VALID\"},\"logging.googleapis.com/labels\":{\"firebase-log-type\":\"callable-request-verification\"},\"severity\":\"DEBUG\",\"message\":\"Callable request verification passed\"}"}}
+[warn] !  Google API requested!
+   - URL: "https://oauth2.googleapis.com/token"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Google API requested!\n   - URL: \"https://oauth2.googleapis.com/token\"\n   - Be careful, this may be a production service."}}
+[debug] [2026-05-07T18:27:41.849Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "europe-west1-createPointage" in 1434.8787ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Finished \"europe-west1-createPointage\" in 1434.8787ms"}}
+[debug] [2026-05-07T18:27:41.850Z] [worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"[worker-europe-west1-createPointage-c660ce72-8868-4ff4-a006-4952cbf49ad7]: IDLE"}}
+[debug] [2026-05-07T18:27:41.850Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-05-07T18:27:41.850Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"europe-west1-createPointage"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-05-07T18:27:41.851Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
