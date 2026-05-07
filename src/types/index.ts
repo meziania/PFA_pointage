@@ -1,6 +1,6 @@
-import type { Role } from "@prisma/client";
+import type { Role, LeaveType, LeaveStatus, AttendanceMethod, AttendanceDayStatus } from "@prisma/client";
 
-export type { Role };
+export type { Role, LeaveType, LeaveStatus, AttendanceMethod, AttendanceDayStatus };
 
 export type NavItem = {
   title: string;
