@@ -125,8 +125,11 @@ export default function AdminQrCodePage() {
       setExpiresAtMs(exp);
       setUpdatedAtMs(Date.now());
       toast.success("Nouveau QR généré (hebdomadaire)");
-    } catch {
-      toast.error("Impossible de générer un nouveau QR");
+    } catch (err) {
+      const anyErr = err as { code?: unknown; message?: unknown } | null;
+      const code = typeof anyErr?.code === "string" ? anyErr.code : "";
+      const msg = typeof anyErr?.message === "string" ? anyErr.message : "";
+      toast.error(`Impossible de générer un nouveau QR${code ? ` (${code})` : ""}${msg ? `: ${msg}` : ""}`);
     } finally {
       setRotating(false);
     }
