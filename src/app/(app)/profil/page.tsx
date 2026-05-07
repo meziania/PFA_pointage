@@ -99,8 +99,7 @@ export default function ProfilPage() {
     try {
       await updateUserDoc(uid, {
         nom: values.nom.trim(),
-        // Employee updates are restricted by Firestore rules: do not patch email here.
-        // Email is managed by the auth provider/admin.
+        email: values.email.trim(),
         matricule: values.matricule?.trim() || undefined,
         telephone: values.telephone?.trim() || undefined,
         departement: values.departement?.trim() || undefined,
@@ -111,11 +110,8 @@ export default function ProfilPage() {
         dateEmbauche: values.dateEmbauche?.trim() || undefined,
       });
       toast.success("Profil mis à jour");
-    } catch (err) {
-      const anyErr = err as { code?: unknown; message?: unknown } | null;
-      const code = typeof anyErr?.code === "string" ? anyErr.code : "";
-      const msg = typeof anyErr?.message === "string" ? anyErr.message : "";
-      toast.error(`Erreur lors de la mise à jour du profil${code ? ` (${code})` : ""}${msg ? `: ${msg}` : ""}`);
+    } catch {
+      toast.error("Erreur lors de la mise à jour du profil");
     } finally {
       setSaving(false);
     }
