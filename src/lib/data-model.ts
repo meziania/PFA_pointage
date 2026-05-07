@@ -41,3 +41,12 @@ export type CongeDoc = {
   createdAt?: unknown;
 };
 
+export type NotificationDoc = {
+  userId: string;
+  title: string;
+  body: string;
+  qrLink?: string;
+  read: boolean;
+  createdAt?: unknown;
+};
+
