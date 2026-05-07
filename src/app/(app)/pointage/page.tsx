@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { httpsCallable } from "firebase/functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getFirebaseFunctions } from "@/lib/firebase-functions";
 import type { PointageType } from "@/lib/data-model";
@@ -75,16 +76,10 @@ export default function PointagePage() {
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoHint, setGeoHint] = useState<string>("");
   const [qr, setQr] = useState<string>("");
-  const [qrSource, setQrSource] = useState<"scan" | null>(null);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const lastQrToastRef = useRef<{ text: string; at: number } | null>(null);
   const qrTrimmed = useMemo(() => qr.trim(), [qr]);
-  const step = useMemo(() => {
-    if (!geo) return 1;
-    if (!qrTrimmed) return 2;
-    return 3;
-  }, [geo, qrTrimmed]);
 
   const orgLat = useMemo(() => parseEnvNumber(process.env.NEXT_PUBLIC_ORG_LAT), []);
   const orgLon = useMemo(() => parseEnvNumber(process.env.NEXT_PUBLIC_ORG_LON), []);
@@ -102,10 +97,7 @@ export default function PointagePage() {
     return distanceM <= orgRadiusM;
   }, [distanceM, orgRadiusM]);
 
-  const canPoint = useMemo(
-    () => Boolean(geo && qrTrimmed && qrSource === "scan" && !saving && inZone !== false),
-    [geo, qrTrimmed, qrSource, saving, inZone],
-  );
+  const canPoint = useMemo(() => Boolean(geo && qrTrimmed && !saving && inZone !== false), [geo, qrTrimmed, saving, inZone]);
 
   const handleGetGeo = useCallback(async () => {
     setGeoLoading(true);
@@ -139,7 +131,6 @@ export default function PointagePage() {
     const clean = String(text ?? "").trim();
     if (!clean) return;
     setQr(clean);
-    setQrSource("scan");
     // Dedup toast in case the scanner fires multiple times.
     const now = Date.now();
     const last = lastQrToastRef.current;
@@ -160,9 +151,15 @@ export default function PointagePage() {
         return;
       }
 
+      const qrToken = process.env.NEXT_PUBLIC_POINTAGE_QR_TOKEN?.trim() ?? "";
+      if (!qrToken) {
+        toast.error("QR token manquant: définissez NEXT_PUBLIC_POINTAGE_QR_TOKEN dans .env.local");
+        return;
+      }
+
       const scanned = qr.trim();
-      if (!scanned || qrSource !== "scan") {
-        toast.error("Scan du QR obligatoire avant de pointer");
+      if (!scanned) {
+        toast.error("Scannez le QR code (ou collez le token) avant de pointer");
         return;
       }
 
@@ -183,7 +180,6 @@ export default function PointagePage() {
       const type = payload.type;
       toast.success(type === "sortie" ? "Pointage de sortie enregistré" : "Pointage d'entrée enregistré");
       setQr("");
-      setQrSource(null);
       setScanning(false);
     } catch (err) {
       const anyErr = err as { code?: string; message?: string; details?: unknown };
@@ -208,52 +204,15 @@ export default function PointagePage() {
     } finally {
       setSaving(false);
     }
-  }, [geo, user, qr, qrSource]);
+  }, [geo, user, qr]);
 
   if (!user) return null;
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-2xl border bg-card p-5 md:p-6">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(142,71%,45%,0.18),transparent_58%),radial-gradient(ellipse_at_bottom,hsla(217,92%,60%,0.14),transparent_55%)]" />
-        <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Pointage</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              1) GPS → 2) QR → 3) Validation serveur. Rapide, sécurisé, traçable.
-            </p>
-          </div>
-
-          <div className="grid gap-2 rounded-xl border bg-background/60 p-3 sm:grid-cols-3 sm:gap-0">
-            {[
-              { n: 1, label: "Position" },
-              { n: 2, label: "QR" },
-              { n: 3, label: "Pointer" },
-            ].map((s) => (
-              <div
-                key={s.n}
-                className={
-                  step === s.n
-                    ? "flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
-                    : step > s.n
-                      ? "flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-foreground"
-                      : "flex items-center justify-center gap-2 px-3 py-2 text-xs text-muted-foreground"
-                }
-              >
-                <span
-                  className={
-                    step >= s.n
-                      ? "grid h-5 w-5 place-items-center rounded-full bg-primary/15 text-[10px] text-primary"
-                      : "grid h-5 w-5 place-items-center rounded-full bg-muted text-[10px] text-muted-foreground"
-                  }
-                >
-                  {step > s.n ? "✓" : s.n}
-                </span>
-                {s.label}
-              </div>
-            ))}
-          </div>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Pointage</h1>
+        <p className="text-muted-foreground">Géolocalisation + QR code, puis enregistrement du pointage.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -366,44 +325,28 @@ export default function PointagePage() {
         <Card>
           <CardHeader>
             <CardTitle>2) QR Code</CardTitle>
-            <CardDescription>Scannez le QR code affiché à l’entrée de l’entreprise.</CardDescription>
+            <CardDescription>Scannez le QR code de l’entreprise.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-              <div className="flex items-center justify-between rounded-xl border bg-background/60 px-3 py-2">
-                <div className="text-xs text-muted-foreground">État</div>
-                <div
-                  className={
-                    qrTrimmed
-                      ? "inline-flex items-center gap-2 rounded-full bg-[color-mix(in_oklch,var(--success)_18%,transparent)] px-3 py-1 text-xs font-medium"
-                      : "inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
-                  }
-                >
-                  <span className={qrTrimmed ? "h-2 w-2 rounded-full bg-[var(--color-success)]" : "h-2 w-2 rounded-full bg-muted-foreground/40"} />
-                  {qrTrimmed ? "QR validé" : "En attente"}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={() => setScanning((s) => !s)} variant="outline" disabled={saving} className="flex-1">
-                  {scanning ? "Fermer" : "Ouvrir la caméra"}
-                </Button>
-                <Button onClick={handleSave} disabled={!canPoint} className="flex-[2]">
-                  {saving ? "Validation..." : "Pointer"}
-                </Button>
-              </div>
+            <div className="flex gap-2">
+              <Button onClick={() => setScanning((s) => !s)} variant="outline" disabled={saving}>
+                {scanning ? "Arrêter le scan" : "Scanner"}
+              </Button>
+              <Button onClick={handleSave} disabled={!canPoint} className="flex-1">
+                {saving ? "Enregistrement..." : "Pointer"}
+              </Button>
             </div>
 
             {scanning ? (
-              <div className="relative overflow-hidden rounded-xl border p-3">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(217,92%,60%,0.10),transparent_60%)]" />
+              <div className="rounded-md border p-3">
                 <Html5QrcodeScanner onDecoded={handleQrDecoded} />
               </div>
             ) : null}
 
-            <div className="rounded-xl border bg-background/60 p-3 text-xs text-muted-foreground">
-              Objectif: <span className="font-medium text-foreground">valider votre présence</span> en scannant le QR code sur place.
-            </div>
+            <Input value={qr} onChange={(e) => setQr(e.target.value)} placeholder="QR (auto après scan)" />
+            <p className="text-xs text-muted-foreground">
+              Le QR est validé côté serveur (Callable Function) avec le token configuré dans l’environnement.
+            </p>
           </CardContent>
         </Card>
       </div>

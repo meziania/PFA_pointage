@@ -10,7 +10,6 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { NotificationsBell } from "@/components/app/notifications-bell";
 
 const navItems = [
   { href: "/pointage", label: "Pointer" },
@@ -81,7 +80,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
             {user ? (
               <>
-                <NotificationsBell />
                 <div className="hidden text-sm text-muted-foreground md:block">
                   {user.displayName ?? user.email}
                 </div>

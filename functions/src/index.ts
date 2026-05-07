@@ -1,11 +1,9 @@
 import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { auth } from "firebase-functions/v1";
+import { onUserCreated } from "firebase-functions/v2/identity";
 import { defineString } from "firebase-functions/params";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
-import { onSchedule } from "firebase-functions/v2/scheduler";
 import { setGlobalOptions } from "firebase-functions/v2";
-import crypto from "node:crypto";
 
 initializeApp();
 setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
@@ -19,7 +17,8 @@ const qrToken = defineString("POINTAGE_QR_TOKEN");
 
 type PointageType = "entree" | "sortie";
 
-export const onAuthUserCreated = auth.user().onCreate(async (user) => {
+export const onAuthUserCreated = onUserCreated(async (event) => {
+  const user = event.data;
   if (!user?.uid) return;
 
   const uid = user.uid;
@@ -122,162 +121,6 @@ async function inferNextType(uid: string, ymd: string): Promise<PointageType> {
   return latest.type === "entree" ? "sortie" : "entree";
 }
 
-type PointageSettings = {
-  qrToken?: unknown;
-  qrTokenHash?: unknown;
-  qrTokenVersion?: unknown;
-  qrExpiresAt?: { toMillis?: () => number } | null;
-  allowPreviousHashUntil?: { toMillis?: () => number } | null;
-  previousQrTokenHash?: unknown;
-};
-
-type NotificationDoc = {
-  userId: string;
-  title: string;
-  body: string;
-  qrLink?: string;
-  createdAt: unknown;
-  read: boolean;
-};
-
-function randomTokenBase64Url(bytes = 32): string {
-  return crypto
-    .randomBytes(bytes)
-    .toString("base64")
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
-}
-
-function sha256Hex(input: string): string {
-  return crypto.createHash("sha256").update(input, "utf8").digest("hex");
-}
-
-async function getCurrentQrToken(): Promise<{ token: string; expiresAtMs?: number | null; source: "firestore" | "env" }> {
-  // Prefer Firestore so the token can be rotated without redeploying functions.
-  const snap = await db.collection("settings").doc("pointage").get();
-  if (snap.exists) {
-    const data = snap.data() as PointageSettings;
-    const expiresAtMs = typeof data.qrExpiresAt?.toMillis === "function" ? data.qrExpiresAt.toMillis() : null;
-    const tokenHash = typeof data.qrTokenHash === "string" ? data.qrTokenHash.trim() : "";
-    // Backward compatibility: older doc might have qrToken in clear.
-    const tokenClear = typeof data.qrToken === "string" ? data.qrToken.trim() : "";
-    if (tokenHash) return { token: tokenHash, expiresAtMs, source: "firestore" };
-    if (tokenClear) return { token: tokenClear, expiresAtMs, source: "firestore" };
-  }
-
-  const token = qrToken.value().trim();
-  if (!token) {
-    throw new HttpsError("failed-precondition", "POINTAGE_QR_TOKEN is not configured on the function");
-  }
-  return { token, expiresAtMs: null, source: "env" };
-}
-
-export const rotatePointageQrWeekly = onCall(async (request) => {
-  if (!request.auth) throw new HttpsError("unauthenticated", "Authentication required");
-  const uid = request.auth.uid;
-  const role = await getUserRole(uid);
-  if (role !== "admin") throw new HttpsError("permission-denied", "Only admins can rotate the QR token");
-
-  const now = Date.now();
-  const expiresAtMs = now + 7 * 24 * 60 * 60 * 1000;
-  const token = randomTokenBase64Url(24);
-  const tokenHash = sha256Hex(token);
-
-  const ref = db.collection("settings").doc("pointage");
-  const prevSnap = await ref.get();
-  const prev = prevSnap.exists ? (prevSnap.data() as PointageSettings) : null;
-  const previousHash = typeof prev?.qrTokenHash === "string" ? prev.qrTokenHash.trim() : "";
-  const previousClear = typeof prev?.qrToken === "string" ? prev.qrToken.trim() : "";
-  const previousToStore = previousHash || (previousClear ? sha256Hex(previousClear) : "");
-  const graceUntilMs = now + 24 * 60 * 60 * 1000; // 24h grace for old QR
-
-  await ref.set(
-    {
-      // Store only hash going forward (token itself returned to admin caller)
-      qrTokenHash: tokenHash,
-      qrTokenVersion: FieldValue.increment(1),
-      previousQrTokenHash: previousToStore || FieldValue.delete(),
-      allowPreviousHashUntil: previousToStore ? new Date(graceUntilMs) : FieldValue.delete(),
-      qrExpiresAt: new Date(expiresAtMs),
-      updatedAt: FieldValue.serverTimestamp(),
-      // Keep legacy field empty to avoid leaking token via Firestore reads
-      qrToken: FieldValue.delete(),
-    },
-    { merge: true },
-  );
-
-  return { token, expiresAtMs };
-});
-
-export const scheduledRotatePointageQrWeekly = onSchedule("every monday 08:00", async () => {
-  // Weekly rotation without manual admin action.
-  const now = Date.now();
-  const expiresAtMs = now + 7 * 24 * 60 * 60 * 1000;
-  const token = randomTokenBase64Url(24);
-  const tokenHash = sha256Hex(token);
-
-  const ref = db.collection("settings").doc("pointage");
-  const prevSnap = await ref.get();
-  const prev = prevSnap.exists ? (prevSnap.data() as PointageSettings) : null;
-  const previousHash = typeof prev?.qrTokenHash === "string" ? prev.qrTokenHash.trim() : "";
-  const previousToStore = previousHash || "";
-  const graceUntilMs = now + 24 * 60 * 60 * 1000; // 24h grace for old QR
-
-  await ref.set(
-    {
-      qrTokenHash: tokenHash,
-      qrTokenVersion: FieldValue.increment(1),
-      previousQrTokenHash: previousToStore || FieldValue.delete(),
-      allowPreviousHashUntil: previousToStore ? new Date(graceUntilMs) : FieldValue.delete(),
-      qrExpiresAt: new Date(expiresAtMs),
-      updatedAt: FieldValue.serverTimestamp(),
-      qrToken: FieldValue.delete(),
-    },
-    { merge: true },
-  );
-
-  // For security, we do NOT store/return the raw token here. The admin UI should rotate manually to distribute.
-  // If you want automatic distribution, wire email/in-app notifications here (and use a one-time token encryption).
-});
-
-export const notifyEmployeesNewQr = onCall(async (request) => {
-  if (!request.auth) throw new HttpsError("unauthenticated", "Authentication required");
-  const uid = request.auth.uid;
-  const role = await getUserRole(uid);
-  if (role !== "admin") throw new HttpsError("permission-denied", "Only admins can notify employees");
-
-  const data = (request.data ?? {}) as { link?: unknown; tokenExpiresAtMs?: unknown };
-  const link = typeof data.link === "string" ? data.link.trim() : "";
-  const expMs = typeof data.tokenExpiresAtMs === "number" ? data.tokenExpiresAtMs : null;
-
-  const usersSnap = await db.collection("users").where("role", "==", "employe").limit(1000).get();
-  if (usersSnap.empty) return { sent: 0 };
-
-  const batch = db.batch();
-  let sent = 0;
-  const expiryHint = expMs ? `Valable jusqu’au ${new Date(expMs).toLocaleString("fr-FR")}.` : "";
-  const body = `Un nouveau QR de pointage est disponible. ${expiryHint}`.trim();
-
-  for (const u of usersSnap.docs) {
-    const userId = u.id;
-    const ref = db.collection("notifications").doc();
-    const docData: NotificationDoc = {
-      userId,
-      title: "Nouveau QR de pointage",
-      body,
-      ...(link ? { qrLink: link } : {}),
-      read: false,
-      createdAt: FieldValue.serverTimestamp(),
-    };
-    batch.set(ref, docData);
-    sent += 1;
-  }
-
-  await batch.commit();
-  return { sent };
-});
-
 export const createPointage = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Authentication required");
@@ -303,30 +146,13 @@ export const createPointage = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "latitude/longitude are required");
   }
 
-  const provided = extractQrToken(qr);
-  const { token: expected, expiresAtMs } = await getCurrentQrToken();
-
-  const providedHash = sha256Hex(provided);
-  const expectedLooksHashed = expected.length === 64 && /^[0-9a-f]{64}$/i.test(expected);
-
-  if (expectedLooksHashed) {
-    // Hash-based validation (preferred)
-    if (providedHash !== expected) {
-      // Check grace period for previous hash
-      const snap = await db.collection("settings").doc("pointage").get();
-      const data = snap.exists ? (snap.data() as PointageSettings) : null;
-      const prevHash = typeof data?.previousQrTokenHash === "string" ? data.previousQrTokenHash.trim() : "";
-      const prevUntil = typeof data?.allowPreviousHashUntil?.toMillis === "function" ? data.allowPreviousHashUntil.toMillis() : null;
-      const prevOk = Boolean(prevHash && prevUntil && Date.now() <= prevUntil && providedHash === prevHash);
-      if (!prevOk) throw new HttpsError("permission-denied", "Invalid QR token");
-    }
-  } else {
-    // Legacy clear-text validation (env or old doc)
-    if (provided !== expected) throw new HttpsError("permission-denied", "Invalid QR token");
+  const expectedQr = qrToken.value();
+  if (!expectedQr) {
+    throw new HttpsError("failed-precondition", "POINTAGE_QR_TOKEN is not configured on the function");
   }
-
-  if (typeof expiresAtMs === "number" && Number.isFinite(expiresAtMs) && Date.now() > expiresAtMs) {
-    throw new HttpsError("permission-denied", "QR token expired");
+  const provided = extractQrToken(qr);
+  if (provided !== expectedQr) {
+    throw new HttpsError("permission-denied", "Invalid QR token");
   }
 
   const orgLatRaw = orgLat.value().trim();

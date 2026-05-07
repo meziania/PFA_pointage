@@ -106,17 +106,5 @@ service cloud.firestore {
 
       allow delete: if false;
     }
-
-    // App settings (QR rotation, etc.) - admin only
-    match /settings/{docId} {
-      allow read, write: if isAdmin();
-    }
-
-    // In-app notifications - employee can read their own notifications
-    match /notifications/{notifId} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isAdmin();
-      allow update, delete: if false;
-    }
   }
 }
