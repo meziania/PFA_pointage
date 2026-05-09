@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
+import { firebaseMissingConfigMessage } from "@/lib/firebase-missing-message";
 import { getUserRole } from "@/lib/firestore-helpers";
 import { BrandLogo } from "@/components/brand/brand-logo";
 
@@ -50,7 +51,7 @@ export default function LoginPage() {
     try {
       const auth = getFirebaseAuth();
       if (!auth) {
-        toast.error("Firebase n'est pas configuré. Vérifiez votre fichier .env.local");
+        toast.error(firebaseMissingConfigMessage());
         return;
       }
 
