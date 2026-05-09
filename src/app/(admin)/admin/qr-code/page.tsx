@@ -126,10 +126,17 @@ export default function AdminQrCodePage() {
       setUpdatedAtMs(Date.now());
       toast.success("Nouveau QR généré (hebdomadaire)");
     } catch (err) {
-      const anyErr = err as { code?: unknown; message?: unknown } | null;
+      const anyErr = err as { code?: unknown; message?: unknown; details?: unknown } | null;
       const code = typeof anyErr?.code === "string" ? anyErr.code : "";
       const msg = typeof anyErr?.message === "string" ? anyErr.message : "";
-      toast.error(`Impossible de générer un nouveau QR${code ? ` (${code})` : ""}${msg ? `: ${msg}` : ""}`);
+      const details = typeof anyErr?.details === "string" ? anyErr.details : "";
+      const hint =
+        code === "functions/internal"
+          ? " Ouvrez Firebase Console → Functions → rotatePointageQrWeekly → Logs, redéployez les functions si le code vient d’être corrigé, et vérifiez que votre compte a role « admin » dans Firestore."
+          : "";
+      toast.error(
+        `Impossible de générer un nouveau QR${code ? ` (${code})` : ""}${msg ? `: ${msg}` : ""}${details ? ` — ${details}` : ""}${hint}`,
+      );
     } finally {
       setRotating(false);
     }

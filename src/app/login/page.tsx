@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { firebaseMissingConfigMessage } from "@/lib/firebase-missing-message";
-import { getUserRole } from "@/lib/firestore-helpers";
+import { ensureUserDoc, getUserRole } from "@/lib/firestore-helpers";
 import { BrandLogo } from "@/components/brand/brand-logo";
 
 const formSchema = z.object({
@@ -56,9 +56,23 @@ export default function LoginPage() {
       }
 
       await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error("Session introuvable après connexion");
+        return;
+      }
+
+      const email = user.email ?? "";
+      const nom = user.displayName?.trim() || (email ? email.split("@")[0] : "Employé");
+      await ensureUserDoc({ uid: user.uid, nom, email, role: "employe" });
+
+      let role = await getUserRole(user.uid);
+      for (let i = 0; i < 8 && !role; i += 1) {
+        await new Promise((r) => setTimeout(r, 250));
+        role = await getUserRole(user.uid);
+      }
+
       toast.success("Connexion réussie");
-      const uid = auth.currentUser?.uid;
-      const role = uid ? await getUserRole(uid) : null;
       router.push(role === "admin" ? "/admin/dashboard" : "/pointage");
       router.refresh();
     } catch (error) {

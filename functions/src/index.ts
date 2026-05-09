@@ -1,10 +1,10 @@
 import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { auth } from "firebase-functions/v1";
 import { defineString } from "firebase-functions/params";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { setGlobalOptions } from "firebase-functions/v2";
+import * as logger from "firebase-functions/logger";
 import crypto from "node:crypto";
 
 initializeApp();
@@ -19,24 +19,8 @@ const qrToken = defineString("POINTAGE_QR_TOKEN");
 
 type PointageType = "entree" | "sortie";
 
-export const onAuthUserCreated = auth.user().onCreate(async (user) => {
-  if (!user?.uid) return;
-
-  const uid = user.uid;
-  const email = user.email ?? "";
-  const nom = user.displayName ?? (email ? email.split("@")[0] : "Employé");
-
-  const ref = db.collection("users").doc(uid);
-  const snap = await ref.get();
-  if (snap.exists) return;
-
-  await ref.set({
-    nom,
-    email,
-    role: "employe",
-    createdAt: FieldValue.serverTimestamp(),
-  });
-});
+// Profil Firestore `users/{uid}` : créé à l'inscription (register) et au premier login si absent.
+// Pas de trigger Auth Gen1 : évite Gen1 + IAM bucket `gcf-sources-*` ; Auth n'a pas d'équivalent Gen2 « after create » sans Identity Platform.
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -131,6 +115,14 @@ type PointageSettings = {
   previousQrTokenHash?: unknown;
 };
 
+/** Bump sécurisé : `FieldValue.increment` échoue si `qrTokenVersion` n'est pas un nombre côté Firestore. */
+function nextQrTokenVersion(prev: PointageSettings | null): number {
+  const v = prev?.qrTokenVersion;
+  if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v) + 1;
+  if (typeof v === "string" && /^\d+$/.test(v.trim())) return Number(v.trim()) + 1;
+  return 1;
+}
+
 type NotificationDoc = {
   userId: string;
   title: string;
@@ -192,20 +184,28 @@ export const rotatePointageQrWeekly = onCall(async (request) => {
   const previousToStore = previousHash || (previousClear ? sha256Hex(previousClear) : "");
   const graceUntilMs = now + 24 * 60 * 60 * 1000; // 24h grace for old QR
 
-  await ref.set(
-    {
-      // Store only hash going forward (token itself returned to admin caller)
-      qrTokenHash: tokenHash,
-      qrTokenVersion: FieldValue.increment(1),
-      previousQrTokenHash: previousToStore || FieldValue.delete(),
-      allowPreviousHashUntil: previousToStore ? new Date(graceUntilMs) : FieldValue.delete(),
-      qrExpiresAt: new Date(expiresAtMs),
-      updatedAt: FieldValue.serverTimestamp(),
-      // Keep legacy field empty to avoid leaking token via Firestore reads
-      qrToken: FieldValue.delete(),
-    },
-    { merge: true },
-  );
+  try {
+    await ref.set(
+      {
+        // Store only hash going forward (token itself returned to admin caller)
+        qrTokenHash: tokenHash,
+        qrTokenVersion: nextQrTokenVersion(prev),
+        previousQrTokenHash: previousToStore || FieldValue.delete(),
+        allowPreviousHashUntil: previousToStore ? new Date(graceUntilMs) : FieldValue.delete(),
+        qrExpiresAt: new Date(expiresAtMs),
+        updatedAt: FieldValue.serverTimestamp(),
+        // Keep legacy field empty to avoid leaking token via Firestore reads
+        qrToken: FieldValue.delete(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    logger.error("rotatePointageQrWeekly: Firestore set failed", err);
+    throw new HttpsError(
+      "failed-precondition",
+      "Impossible d'enregistrer le QR (Firestore). Consultez les logs de la fonction rotatePointageQrWeekly.",
+    );
+  }
 
   return { token, expiresAtMs };
 });
@@ -224,18 +224,23 @@ export const scheduledRotatePointageQrWeekly = onSchedule("every monday 08:00", 
   const previousToStore = previousHash || "";
   const graceUntilMs = now + 24 * 60 * 60 * 1000; // 24h grace for old QR
 
-  await ref.set(
-    {
-      qrTokenHash: tokenHash,
-      qrTokenVersion: FieldValue.increment(1),
-      previousQrTokenHash: previousToStore || FieldValue.delete(),
-      allowPreviousHashUntil: previousToStore ? new Date(graceUntilMs) : FieldValue.delete(),
-      qrExpiresAt: new Date(expiresAtMs),
-      updatedAt: FieldValue.serverTimestamp(),
-      qrToken: FieldValue.delete(),
-    },
-    { merge: true },
-  );
+  try {
+    await ref.set(
+      {
+        qrTokenHash: tokenHash,
+        qrTokenVersion: nextQrTokenVersion(prev),
+        previousQrTokenHash: previousToStore || FieldValue.delete(),
+        allowPreviousHashUntil: previousToStore ? new Date(graceUntilMs) : FieldValue.delete(),
+        qrExpiresAt: new Date(expiresAtMs),
+        updatedAt: FieldValue.serverTimestamp(),
+        qrToken: FieldValue.delete(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    logger.error("scheduledRotatePointageQrWeekly: Firestore set failed", err);
+    throw err;
+  }
 
   // For security, we do NOT store/return the raw token here. The admin UI should rotate manually to distribute.
   // If you want automatic distribution, wire email/in-app notifications here (and use a one-time token encryption).

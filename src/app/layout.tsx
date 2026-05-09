@@ -22,6 +22,10 @@ export const metadata: Metadata = {
     "SaaS professionnel de pointage numérique : présences en temps réel, GPS, QR code, congés et rapports RH.",
   keywords: ["pointage", "RH", "présence", "congés", "TimeTrack Pro"],
   authors: [{ name: "TimeTrack Pro" }],
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/favicon.svg",
+  },
 };
 
 export const viewport: Viewport = {
