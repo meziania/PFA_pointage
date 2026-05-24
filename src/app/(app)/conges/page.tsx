@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { differenceInBusinessDays, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -145,9 +146,14 @@ export default function CongesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Congés</h1>
-        <p className="text-muted-foreground">Créer une demande et suivre son statut.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Congés</h1>
+          <p className="text-muted-foreground">Créer une demande et suivre son statut.</p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/calendrier">Voir le calendrier</Link>
+        </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

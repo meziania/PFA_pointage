@@ -16,6 +16,7 @@ const navItems = [
   { href: "/pointage", label: "Pointer" },
   { href: "/historique", label: "Historique" },
   { href: "/conges", label: "Congés" },
+  { href: "/calendrier", label: "Calendrier" },
   { href: "/profil", label: "Profil" },
 ];
 
