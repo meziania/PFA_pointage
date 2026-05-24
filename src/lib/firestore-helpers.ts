@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  deleteField,
   where,
   addDoc,
   Timestamp,
@@ -65,6 +66,81 @@ export async function updateUserDoc(uid: string, patch: Partial<UserDoc>): Promi
   const db = requireDb();
   const ref = doc(db, "users", uid);
   await updateDoc(ref, patch);
+}
+
+/** Champs modifiables par l'employé (aligné sur firestore.rules — pas d'email ni role). */
+export type EmployeeProfilePatch = Pick<
+  UserDoc,
+  "nom" | "matricule" | "telephone" | "departement" | "poste" | "cin" | "adresse" | "dateNaissance" | "dateEmbauche"
+>;
+
+function buildEmployeeProfileData(
+  patch: EmployeeProfilePatch,
+  existing?: Record<string, unknown>,
+): Record<string, unknown> {
+  const data: Record<string, unknown> = { nom: patch.nom.trim() };
+
+  const optional: (keyof EmployeeProfilePatch)[] = [
+    "matricule",
+    "telephone",
+    "departement",
+    "poste",
+    "cin",
+    "adresse",
+    "dateNaissance",
+    "dateEmbauche",
+  ];
+
+  for (const key of optional) {
+    const v = patch[key];
+    if (typeof v !== "string") continue;
+    const trimmed = v.trim();
+    if (trimmed) {
+      data[key] = trimmed;
+    } else if (existing && key in existing) {
+      data[key] = deleteField();
+    }
+  }
+
+  return data;
+}
+
+export async function updateEmployeeProfile(
+  uid: string,
+  patch: EmployeeProfilePatch,
+  context: { email: string },
+): Promise<void> {
+  const db = requireDb();
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+  const existing = snap.exists() ? snap.data() : undefined;
+  const data = buildEmployeeProfileData(patch, existing);
+
+  if (!snap.exists()) {
+    const createPayload: Record<string, unknown> = {
+      nom: patch.nom.trim(),
+      email: context.email.trim(),
+      role: "employe" satisfies UserRole,
+      createdAt: serverTimestamp(),
+    };
+    for (const key of [
+      "matricule",
+      "telephone",
+      "departement",
+      "poste",
+      "cin",
+      "adresse",
+      "dateNaissance",
+      "dateEmbauche",
+    ] as const) {
+      const v = patch[key];
+      if (typeof v === "string" && v.trim()) createPayload[key] = v.trim();
+    }
+    await setDoc(ref, createPayload);
+    return;
+  }
+
+  await updateDoc(ref, data);
 }
 
 export async function listPointagesForUser(uid: string, take = 50): Promise<Array<PointageDoc & { id: string }>> {

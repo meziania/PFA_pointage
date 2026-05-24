@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { doc, onSnapshot } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ProfileAvatarUpload } from "@/components/app/profile-avatar-upload";
-import { getUserDoc, updateUserDoc } from "@/lib/firestore-helpers";
+import { ensureUserDoc, updateEmployeeProfile } from "@/lib/firestore-helpers";
+import { getFirebaseFirestore } from "@/lib/firebase-firestore";
+import type { UserDoc } from "@/lib/data-model";
 
 const profileSchema = z.object({
   nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
@@ -30,7 +34,7 @@ const profileSchema = z.object({
 type FormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilPage() {
-  const { user } = useAuth();
+  const { user, refreshProfilePhoto } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
@@ -53,46 +57,82 @@ export default function ProfilPage() {
 
   const uid = user?.uid ?? null;
 
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      if (!uid) return;
-      setLoading(true);
-      try {
-        const doc = await getUserDoc(uid);
-        if (!doc) {
-          // Shouldn't happen because ensureUserDoc is called on register.
-          form.reset({
-            nom: user?.displayName ?? "",
-            email: user?.email ?? "",
-          });
-          return;
-        }
-        if (cancelled) return;
-        setPhotoURL(doc.photoURL ?? user?.photoURL ?? null);
+  const applyUserDoc = useCallback(
+    (data: UserDoc | null) => {
+      if (!data) {
         form.reset({
-          nom: doc.nom ?? user?.displayName ?? "",
-          email: doc.email ?? user?.email ?? "",
-          matricule: doc.matricule ?? "",
-          telephone: doc.telephone ?? "",
-          departement: doc.departement ?? "",
-          poste: doc.poste ?? "",
-          cin: doc.cin ?? "",
-          adresse: doc.adresse ?? "",
-          dateNaissance: doc.dateNaissance ?? "",
-          dateEmbauche: doc.dateEmbauche ?? "",
+          nom: user?.displayName ?? "",
+          email: user?.email ?? "",
+          matricule: "",
+          telephone: "",
+          departement: "",
+          poste: "",
+          cin: "",
+          adresse: "",
+          dateNaissance: "",
+          dateEmbauche: "",
         });
-      } catch {
-        toast.error("Impossible de charger votre profil");
-      } finally {
-        if (!cancelled) setLoading(false);
+        setPhotoURL(user?.photoURL ?? null);
+        return;
       }
+      setPhotoURL(data.photoURL ?? user?.photoURL ?? null);
+      form.reset({
+        nom: data.nom ?? user?.displayName ?? "",
+        email: data.email ?? user?.email ?? "",
+        matricule: data.matricule ?? "",
+        telephone: data.telephone ?? "",
+        departement: data.departement ?? "",
+        poste: data.poste ?? "",
+        cin: data.cin ?? "",
+        adresse: data.adresse ?? "",
+        dateNaissance: data.dateNaissance ?? "",
+        dateEmbauche: data.dateEmbauche ?? "",
+      });
+    },
+    [form, user?.displayName, user?.email, user?.photoURL],
+  );
+
+  useEffect(() => {
+    if (!uid || !user?.email) return;
+    const db = getFirebaseFirestore();
+    if (!db) {
+      setLoading(false);
+      return;
     }
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [uid, form, user?.displayName, user?.email]);
+
+    setLoading(true);
+    let ensured = false;
+
+    const ref = doc(db, "users", uid);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) {
+          if (!ensured) {
+            ensured = true;
+            void ensureUserDoc({
+              uid,
+              nom: user.displayName?.trim() || user.email!.split("@")[0] || "Employé",
+              email: user.email!,
+              role: "employe",
+            }).catch(() => {
+              /* le prochain snapshot réessaiera */
+            });
+          }
+          applyUserDoc(null);
+        } else {
+          applyUserDoc(snap.data() as UserDoc);
+        }
+        setLoading(false);
+      },
+      () => {
+        toast.error("Impossible de charger votre profil");
+        setLoading(false);
+      },
+    );
+
+    return () => unsub();
+  }, [uid, user?.email, user?.displayName, applyUserDoc]);
 
   const readonlyEmail = useMemo(() => Boolean(user?.email), [user?.email]);
 
@@ -100,21 +140,45 @@ export default function ProfilPage() {
     if (!uid) return;
     setSaving(true);
     try {
-      await updateUserDoc(uid, {
-        nom: values.nom.trim(),
-        email: values.email.trim(),
-        matricule: values.matricule?.trim() || undefined,
-        telephone: values.telephone?.trim() || undefined,
-        departement: values.departement?.trim() || undefined,
-        poste: values.poste?.trim() || undefined,
-        cin: values.cin?.trim() || undefined,
-        adresse: values.adresse?.trim() || undefined,
-        dateNaissance: values.dateNaissance?.trim() || undefined,
-        dateEmbauche: values.dateEmbauche?.trim() || undefined,
-      });
+      const email = user.email ?? values.email.trim();
+      if (!email) {
+        toast.error("Email introuvable pour enregistrer le profil");
+        return;
+      }
+
+      await updateEmployeeProfile(
+        uid,
+        {
+          nom: values.nom,
+          matricule: values.matricule,
+          telephone: values.telephone,
+          departement: values.departement,
+          poste: values.poste,
+          cin: values.cin,
+          adresse: values.adresse,
+          dateNaissance: values.dateNaissance,
+          dateEmbauche: values.dateEmbauche,
+        },
+        { email },
+      );
+
+      try {
+        await updateProfile(user, { displayName: values.nom.trim() });
+      } catch {
+        /* Firestore est la source de vérité */
+      }
+      await refreshProfilePhoto();
+
       toast.success("Profil mis à jour");
-    } catch {
-      toast.error("Erreur lors de la mise à jour du profil");
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      const msg =
+        code === "permission-denied"
+          ? "Mise à jour refusée par Firestore (règles de sécurité). Déployez firestore.rules si besoin."
+          : err instanceof Error
+            ? err.message
+            : "Erreur lors de la mise à jour du profil";
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

@@ -80,9 +80,9 @@ service cloud.firestore {
             "photoURL"
           ])
           && (!("photoURL" in request.resource.data) || request.resource.data.photoURL is string)
-          && request.resource.data.email == resource.data.email
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.createdAt == resource.data.createdAt
+          && (!("email" in resource.data) || request.resource.data.email == resource.data.email)
+          && (!("role" in resource.data) || request.resource.data.role == resource.data.role)
+          && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
         );
       allow delete: if false;
     }
