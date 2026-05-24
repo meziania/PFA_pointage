@@ -12,6 +12,7 @@ import {
   eventKindClass,
   eventKindLabel,
   formatMonthYear,
+  primaryEventKind,
   type CalendarDay,
   type CalendarEventKind,
   type CongeCalendarRow,
@@ -107,7 +108,7 @@ export function AbsenceCalendar({
               <div className="grid grid-cols-7 gap-1">
                 {days.map((day) => {
                   const hasEvents = day.events.length > 0;
-                  const primary = day.events[0];
+                  const primaryKind = primaryEventKind(day.events);
                   const isToday = day.date === format(new Date(), "yyyy-MM-dd");
 
                   return (
@@ -120,7 +121,7 @@ export function AbsenceCalendar({
                         !day.isCurrentMonth && "opacity-40",
                         day.isWeekend && day.isCurrentMonth && "bg-muted/30",
                         isToday && "ring-2 ring-primary/50",
-                        hasEvents && primary && eventKindClass(primary.kind),
+                        hasEvents && primaryKind && eventKindClass(primaryKind),
                       )}
                     >
                       <span className="text-xs font-semibold tabular-nums">{day.dayOfMonth}</span>

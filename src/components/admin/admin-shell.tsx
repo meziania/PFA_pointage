@@ -15,7 +15,6 @@ const items = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/employes", label: "Employés" },
   { href: "/admin/conges", label: "Congés" },
-  { href: "/admin/calendrier", label: "Calendrier" },
   { href: "/admin/qr-code", label: "QR code" },
   { href: "/admin/rapport-pointage", label: "Rapport pointage" },
 ];

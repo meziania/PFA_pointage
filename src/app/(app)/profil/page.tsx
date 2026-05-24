@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/components/providers/auth-provider";
+import { ProfileAvatarUpload } from "@/components/app/profile-avatar-upload";
 import { getUserDoc, updateUserDoc } from "@/lib/firestore-helpers";
 
 const profileSchema = z.object({
@@ -32,6 +33,7 @@ export default function ProfilPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(profileSchema),
@@ -67,6 +69,7 @@ export default function ProfilPage() {
           return;
         }
         if (cancelled) return;
+        setPhotoURL(doc.photoURL ?? user?.photoURL ?? null);
         form.reset({
           nom: doc.nom ?? user?.displayName ?? "",
           email: doc.email ?? user?.email ?? "",
@@ -131,7 +134,14 @@ export default function ProfilPage() {
           <CardTitle>Informations employé</CardTitle>
           <CardDescription>{loading ? "Chargement..." : "Vous pouvez modifier ces informations à tout moment."}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-8">
+          <ProfileAvatarUpload
+            photoURL={photoURL}
+            displayName={form.watch("nom") || user.displayName || ""}
+            onPhotoUpdated={setPhotoURL}
+            disabled={loading}
+          />
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
               <FormField

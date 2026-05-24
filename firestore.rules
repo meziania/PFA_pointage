@@ -44,7 +44,8 @@ service cloud.firestore {
           "cin",
           "adresse",
           "dateNaissance",
-          "dateEmbauche"
+          "dateEmbauche",
+          "photoURL"
         ])
         && request.resource.data.nom is string
         && request.resource.data.email is string
@@ -57,6 +58,7 @@ service cloud.firestore {
         && (!("adresse" in request.resource.data) || request.resource.data.adresse is string)
         && (!("dateNaissance" in request.resource.data) || request.resource.data.dateNaissance is string)
         && (!("dateEmbauche" in request.resource.data) || request.resource.data.dateEmbauche is string)
+        && (!("photoURL" in request.resource.data) || request.resource.data.photoURL is string)
         && request.resource.data.createdAt == request.time;
 
       // Admin can update any user doc.
@@ -74,8 +76,10 @@ service cloud.firestore {
             "cin",
             "adresse",
             "dateNaissance",
-            "dateEmbauche"
+            "dateEmbauche",
+            "photoURL"
           ])
+          && (!("photoURL" in request.resource.data) || request.resource.data.photoURL is string)
           && request.resource.data.email == resource.data.email
           && request.resource.data.role == resource.data.role
           && request.resource.data.createdAt == resource.data.createdAt
@@ -116,7 +120,17 @@ service cloud.firestore {
     match /notifications/{notifId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
       allow create: if isAdmin();
-      allow update, delete: if false;
+      // Employé : marquer comme lue uniquement (read: false -> true)
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && resource.data.read == false
+        && request.resource.data.read == true
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.body == resource.data.body
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (!("qrLink" in resource.data) || request.resource.data.qrLink == resource.data.qrLink);
+      allow delete: if false;
     }
   }
 }

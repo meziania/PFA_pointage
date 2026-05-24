@@ -8,6 +8,7 @@ import {
   startOfMonth,
 } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Timestamp } from "firebase/firestore";
 import type { CongeDoc, CongeStatut, CongeType } from "@/lib/data-model";
 import type { PublicHoliday } from "@/lib/morocco-holidays";
 
@@ -38,6 +39,41 @@ export type CongeCalendarRow = CongeDoc & { id: string; userName?: string };
 
 function toDateStr(d: Date): string {
   return format(d, "yyyy-MM-dd");
+}
+
+/** Normalise dateDebut/dateFin depuis Firestore (string ISO ou Timestamp). */
+export function congeDateToYmd(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const d = parseISO(s);
+    return Number.isNaN(d.getTime()) ? null : toDateStr(d);
+  }
+  if (value instanceof Timestamp) {
+    return toDateStr(value.toDate());
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return toDateStr(value);
+  }
+  return null;
+}
+
+const KIND_PRIORITY: Record<CalendarEventKind, number> = {
+  ferie: 0,
+  en_attente: 1,
+  annuel: 2,
+  exceptionnel: 3,
+  maladie: 4,
+};
+
+function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
+  return [...events].sort((a, b) => KIND_PRIORITY[a.kind] - KIND_PRIORITY[b.kind]);
+}
+
+export function primaryEventKind(events: CalendarEvent[]): CalendarEventKind | null {
+  if (!events.length) return null;
+  return sortDayEvents(events)[0]?.kind ?? null;
 }
 
 export function formatMonthYear(month: Date): string {
@@ -96,12 +132,17 @@ export function buildCalendarDays(
     if (!includePending && c.statut === "en_attente") continue;
     if (c.statut === "refuse") continue;
 
+    const debutYmd = congeDateToYmd(c.dateDebut);
+    const finYmd = congeDateToYmd(c.dateFin);
+    if (!debutYmd || !finYmd) continue;
+
     let start: Date;
     let end: Date;
     try {
-      start = parseISO(c.dateDebut);
-      end = parseISO(c.dateFin);
+      start = parseISO(debutYmd);
+      end = parseISO(finYmd);
       if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+      if (end < start) continue;
     } catch {
       continue;
     }
@@ -122,6 +163,10 @@ export function buildCalendarDays(
         statut: c.statut,
       });
     }
+  }
+
+  for (const cell of days) {
+    cell.events = sortDayEvents(cell.events);
   }
 
   return days;

@@ -12,6 +12,7 @@ import {
   where,
   addDoc,
   Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 import type { CongeDoc, CongeStatut, PointageDoc, UserDoc, UserRole } from "@/lib/data-model";
@@ -137,5 +138,16 @@ export function toHM(d: Date): string {
 export function unwrapTimestamp(ts: unknown): Date | null {
   if (ts instanceof Timestamp) return ts.toDate();
   return null;
+}
+
+/** Marque une ou plusieurs notifications comme lues (propriétaire uniquement). */
+export async function markNotificationsAsRead(notificationIds: string[]): Promise<void> {
+  if (!notificationIds.length) return;
+  const db = requireDb();
+  const batch = writeBatch(db);
+  for (const id of notificationIds) {
+    batch.update(doc(db, "notifications", id), { read: true });
+  }
+  await batch.commit();
 }
 

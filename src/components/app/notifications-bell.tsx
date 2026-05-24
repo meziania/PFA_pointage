@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { collection, getCountFromServer, limit, query, where, getDocs } from "firebase/firestore";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { collection, limit, onSnapshot, query, where, getDocs } from "firebase/firestore";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
+import { markNotificationsAsRead } from "@/lib/firestore-helpers";
 import type { NotificationDoc } from "@/lib/data-model";
 
 type Row = NotificationDoc & { id: string };
@@ -35,7 +36,6 @@ function extractFirstUrl(text: string): string | null {
 
 function stripUrls(text: string): string {
   const t = text ?? "";
-  // Remove any URLs + preceding "Lien:" marker if present.
   return t
     .replace(/Lien:\s*https?:\/\/[^\s)]+/gi, "")
     .replace(/https?:\/\/[^\s)]+/gi, "")
@@ -57,49 +57,80 @@ export function NotificationsBell() {
   const [count, setCount] = useState<number>(0);
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
+  const markingRef = useRef(false);
 
   const uid = user?.uid ?? "";
   const db = getFirebaseFirestore();
 
   const unreadLabel = useMemo(() => (count > 99 ? "99+" : String(count)), [count]);
 
+  // Compteur temps réel (non lues)
   useEffect(() => {
-    if (!db || !uid) return;
-    const q = query(collection(db, "notifications"), where("userId", "==", uid), where("read", "==", false));
-    void (async () => {
-      try {
-        const snap = await getCountFromServer(q);
-        setCount(snap.data().count);
-      } catch {
-        setCount(0);
-      }
-    })();
-  }, [db, uid, open]);
-
-  const loadLatest = useCallback(async () => {
-    if (!db || !uid) return;
-    try {
-      // Avoid composite indexes: no orderBy here (sort client-side).
-      const q = query(collection(db, "notifications"), where("userId", "==", uid), limit(25));
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as NotificationDoc) }));
-      list.sort((a, b) => createdAtMs(b.createdAt) - createdAtMs(a.createdAt));
-      setRows(list.slice(0, 10));
-    } catch (err) {
-      const anyErr = err as { code?: unknown; message?: unknown } | null;
-      const code = typeof anyErr?.code === "string" ? anyErr.code : "";
-      if (code.includes("permission-denied")) {
-        toast.error("Accès refusé aux notifications (Firestore rules)");
-      } else {
-        toast.error("Impossible de charger les notifications");
-      }
+    if (!db || !uid) {
+      setCount(0);
+      return;
     }
+    const q = query(collection(db, "notifications"), where("userId", "==", uid), where("read", "==", false));
+    const unsub = onSnapshot(
+      q,
+      (snap) => setCount(snap.size),
+      () => setCount(0),
+    );
+    return () => unsub();
   }, [db, uid]);
 
+  const loadLatest = useCallback(async (): Promise<Row[]> => {
+    if (!db || !uid) return [];
+    const q = query(collection(db, "notifications"), where("userId", "==", uid), limit(25));
+    const snap = await getDocs(q);
+    const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as NotificationDoc) }));
+    list.sort((a, b) => createdAtMs(b.createdAt) - createdAtMs(a.createdAt));
+    return list.slice(0, 10);
+  }, [db, uid]);
+
+  const markUnreadAsRead = useCallback(
+    async (list: Row[]) => {
+      const unreadIds = list.filter((n) => n.read === false).map((n) => n.id);
+      if (!unreadIds.length || markingRef.current) return;
+      markingRef.current = true;
+      try {
+        await markNotificationsAsRead(unreadIds);
+        setRows((prev) => prev.map((n) => (unreadIds.includes(n.id) ? { ...n, read: true } : n)));
+      } catch (err) {
+        const anyErr = err as { code?: string } | null;
+        if (anyErr?.code === "permission-denied") {
+          toast.error("Impossible de marquer comme lues (règles Firestore)");
+        }
+      } finally {
+        markingRef.current = false;
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
-    if (!open) return;
-    queueMicrotask(() => void loadLatest());
-  }, [open, loadLatest]);
+    if (!open || !db || !uid) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await loadLatest();
+        if (cancelled) return;
+        setRows(list);
+        await markUnreadAsRead(list);
+      } catch (err) {
+        const anyErr = err as { code?: unknown; message?: unknown } | null;
+        const code = typeof anyErr?.code === "string" ? anyErr.code : "";
+        if (code.includes("permission-denied")) {
+          toast.error("Accès refusé aux notifications (Firestore rules)");
+        } else {
+          toast.error("Impossible de charger les notifications");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, db, uid, loadLatest, markUnreadAsRead]);
 
   if (!uid) return null;
 
@@ -123,7 +154,7 @@ export function NotificationsBell() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 mt-2 w-[min(360px,92vw)] overflow-hidden rounded-xl border bg-background shadow-lg">
+        <div className="absolute right-0 mt-2 w-[min(360px,92vw)] overflow-hidden rounded-xl border bg-background shadow-lg z-50">
           <div className="relative border-b px-3 py-3">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(217,92%,60%,0.16),transparent_65%),radial-gradient(ellipse_at_bottom,hsla(142,71%,45%,0.14),transparent_60%)]" />
             <div className="relative flex items-start justify-between gap-3">
@@ -136,7 +167,17 @@ export function NotificationsBell() {
               <button
                 type="button"
                 className="relative inline-flex items-center gap-2 rounded-md border bg-background/70 px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => void loadLatest()}
+                onClick={() => {
+                  void (async () => {
+                    try {
+                      const list = await loadLatest();
+                      setRows(list);
+                      await markUnreadAsRead(list);
+                    } catch {
+                      toast.error("Impossible de rafraîchir");
+                    }
+                  })();
+                }}
               >
                 ⟳ Rafraîchir
               </button>
@@ -157,7 +198,10 @@ export function NotificationsBell() {
                 {rows.map((n) => {
                   const ms = createdAtMs(n.createdAt);
                   const ago = timeAgo(ms);
-                  const url = typeof n.qrLink === "string" && n.qrLink.trim() ? n.qrLink.trim() : extractFirstUrl(n.body ?? "");
+                  const url =
+                    typeof n.qrLink === "string" && n.qrLink.trim()
+                      ? n.qrLink.trim()
+                      : extractFirstUrl(n.body ?? "");
                   const isUnread = n.read === false;
                   const cleaned = stripUrls(n.body ?? "");
                   const safeBody = cleaned || "Un nouveau QR de pointage est disponible.";
@@ -214,11 +258,10 @@ export function NotificationsBell() {
             )}
           </div>
           <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-            Astuce: garde le GPS actif pour pointer.
+            Les notifications sont marquées comme lues à l’ouverture de cette liste.
           </div>
         </div>
       ) : null}
     </div>
   );
 }
-

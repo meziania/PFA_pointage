@@ -16,13 +16,13 @@ const navItems = [
   { href: "/pointage", label: "Pointer" },
   { href: "/historique", label: "Historique" },
   { href: "/conges", label: "Congés" },
-  { href: "/calendrier", label: "Calendrier" },
   { href: "/profil", label: "Profil" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, role } = useAuth();
+  const { user, role, profilePhotoURL } = useAuth();
+  const avatarSrc = profilePhotoURL ?? user?.photoURL ?? null;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
@@ -83,8 +83,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {user ? (
               <>
                 <NotificationsBell />
-                <div className="hidden text-sm text-muted-foreground md:block">
-                  {user.displayName ?? user.email}
+                <div className="hidden items-center gap-2 md:flex">
+                  {avatarSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={avatarSrc}
+                      alt=""
+                      className="h-8 w-8 rounded-full border object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full border bg-muted text-xs font-semibold">
+                      {(user.displayName ?? user.email ?? "?").slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="text-sm text-muted-foreground">{user.displayName ?? user.email}</span>
                 </div>
                 <Button variant="outline" onClick={handleLogout}>
                   Se déconnecter

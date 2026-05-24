@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { differenceInBusinessDays, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -16,15 +15,30 @@ import { requestConge } from "@/lib/firestore-helpers";
 import type { CongeDoc, CongeType } from "@/lib/data-model";
 import { collection, limit, onSnapshot, query, where } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
+import { AbsenceCalendar } from "@/components/calendar/absence-calendar";
+import { CongesTabNav } from "@/components/conges/conges-tab-nav";
+import { congeDateToYmd, type CongeCalendarRow } from "@/lib/calendar-utils";
 
 type Row = CongeDoc & { id: string };
+type TabId = "calendrier" | "demande" | "historique";
 
-const schema = z.object({
-  dateDebut: z.string().min(10, "Date début requise"),
-  dateFin: z.string().min(10, "Date fin requise"),
-  type: z.enum(["annuel", "maladie", "exceptionnel"]),
-  motif: z.string().optional(),
-});
+const TABS: { id: TabId; label: string }[] = [
+  { id: "calendrier", label: "Calendrier" },
+  { id: "demande", label: "Nouvelle demande" },
+  { id: "historique", label: "Mes demandes" },
+];
+
+const schema = z
+  .object({
+    dateDebut: z.string().min(10, "Date début requise"),
+    dateFin: z.string().min(10, "Date fin requise"),
+    type: z.enum(["annuel", "maladie", "exceptionnel"]),
+    motif: z.string().optional(),
+  })
+  .refine((d) => d.dateFin >= d.dateDebut, {
+    message: "La date de fin doit être au moins égale à la date de début",
+    path: ["dateFin"],
+  });
 
 function typeLabel(t: CongeType): string {
   if (t === "annuel") return "Annuel";
@@ -63,9 +77,15 @@ function safeBusinessDays(start: string, end: string): number | null {
 
 export default function CongesPage() {
   const { user } = useAuth();
+  const [tab, setTab] = useState<TabId>("calendrier");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "demande" || t === "historique" || t === "calendrier") setTab(t);
+  }, []);
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -83,7 +103,17 @@ export default function CongesPage() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setRows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as CongeDoc) })));
+        setRows(
+          snap.docs.map((d) => {
+            const raw = d.data() as CongeDoc;
+            return {
+              id: d.id,
+              ...raw,
+              dateDebut: congeDateToYmd(raw.dateDebut) ?? String(raw.dateDebut ?? ""),
+              dateFin: congeDateToYmd(raw.dateFin) ?? String(raw.dateFin ?? ""),
+            };
+          }),
+        );
         if (first) {
           first = false;
           setLoading(false);
@@ -133,8 +163,9 @@ export default function CongesPage() {
         dateFin: values.dateFin,
         type: values.type as CongeType,
       });
-      toast.success("Demande envoyée");
+      toast.success("Demande envoyée — visible sur le calendrier (orange = en attente)");
       form.reset({ dateDebut: "", dateFin: "", type: "annuel", motif: "" });
+      setTab("calendrier");
     } catch {
       toast.error("Erreur lors de la demande");
     } finally {
@@ -142,21 +173,33 @@ export default function CongesPage() {
     }
   }
 
+  const calendarRows: CongeCalendarRow[] = rows;
+
   if (!user) return null;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Congés</h1>
-          <p className="text-muted-foreground">Créer une demande et suivre son statut.</p>
-        </div>
-        <Button asChild variant="outline">
-          <Link href="/calendrier">Voir le calendrier</Link>
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">Congés & absences</h1>
+        <p className="mt-1 text-muted-foreground">
+          Calendrier (fériés, maladie, congés), nouvelle demande et suivi — une seule page, données synchronisées.
+        </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <CongesTabNav tabs={TABS} active={tab} onChange={(id) => setTab(id as TabId)} />
+
+      {tab === "calendrier" ? (
+        <AbsenceCalendar
+          conges={calendarRows}
+          loading={loading}
+          includePending
+          title="Mon calendrier d'absences"
+          description="Les couleurs correspondent à vos demandes ci-dessous : vert = validé, orange = en attente, rose = maladie, violet = jour férié."
+        />
+      ) : null}
+
+      {tab === "demande" ? (
+      <div className="mx-auto max-w-xl">
         <Card className="relative overflow-hidden">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
@@ -262,7 +305,10 @@ export default function CongesPage() {
             </Form>
           </CardContent>
         </Card>
+      </div>
+      ) : null}
 
+      {tab === "historique" ? (
         <Card>
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
@@ -325,7 +371,7 @@ export default function CongesPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      ) : null}
     </div>
   );
 }

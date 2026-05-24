@@ -13,6 +13,7 @@ export type UserDoc = {
   adresse?: string;
   dateNaissance?: string; // YYYY-MM-DD
   dateEmbauche?: string; // YYYY-MM-DD
+  photoURL?: string;
   createdAt?: unknown;
 };
 
