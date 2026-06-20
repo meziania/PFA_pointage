@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { defineString } from "firebase-functions/params";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
@@ -6,21 +7,246 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import crypto from "node:crypto";
+import { validatePointageQrFromFirestore } from "./qr-dynamic";
 
 initializeApp();
 setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
 const db = getFirestore();
+const authAdmin = getAuth();
 
 const orgLat = defineString("ORG_LAT");
 const orgLon = defineString("ORG_LON");
 const orgRadiusM = defineString("ORG_RADIUS_M");
 const qrToken = defineString("POINTAGE_QR_TOKEN");
+const qrSecret = defineString("POINTAGE_QR_SECRET");
 
 type PointageType = "entree" | "sortie";
 
-// Profil Firestore `users/{uid}` : créé à l'inscription (register) et au premier login si absent.
+// Profil Firestore `users/{uid}` : créé par l'admin (createEmployeeAccount / processJoinRequest).
 // Pas de trigger Auth Gen1 : évite Gen1 + IAM bucket `gcf-sources-*` ; Auth n'a pas d'équivalent Gen2 « after create » sans Identity Platform.
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function assertAdmin(uid: string): Promise<void> {
+  const role = await getUserRole(uid);
+  if (role !== "admin") throw new HttpsError("permission-denied", "Only admins can perform this action");
+}
+
+async function emailAlreadyRegistered(email: string): Promise<boolean> {
+  const normalized = normalizeEmail(email);
+  try {
+    await authAdmin.getUserByEmail(normalized);
+    return true;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === "auth/user-not-found") return false;
+    throw err;
+  }
+}
+
+async function createEmployeAccount(params: {
+  nom: string;
+  email: string;
+  password: string;
+  matricule?: string;
+  departement?: string;
+  poste?: string;
+  telephone?: string;
+  statut?: "actif" | "desactive";
+  doit_changer_mdp?: boolean;
+}): Promise<{ uid: string; email: string }> {
+  const nom = params.nom.trim();
+  const email = normalizeEmail(params.email);
+  const password = params.password;
+
+  if (nom.length < 2) throw new HttpsError("invalid-argument", "Le nom doit contenir au moins 2 caractères");
+  if (!isValidEmail(email)) throw new HttpsError("invalid-argument", "Email invalide");
+  if (typeof password !== "string" || password.length < 6) {
+    throw new HttpsError("invalid-argument", "Le mot de passe doit contenir au moins 6 caractères");
+  }
+
+  if (await emailAlreadyRegistered(email)) {
+    throw new HttpsError("already-exists", "Cet email est déjà utilisé");
+  }
+
+  const userRecord = await authAdmin.createUser({
+    email,
+    password,
+    displayName: nom,
+  });
+
+  const userDoc: Record<string, unknown> = {
+    nom,
+    email,
+    role: "employe",
+    statut: params.statut ?? "actif",
+    doit_changer_mdp: params.doit_changer_mdp ?? true,
+    createdAt: FieldValue.serverTimestamp(),
+  };
+
+  const optional: Array<keyof Pick<typeof params, "matricule" | "departement" | "poste" | "telephone">> = [
+    "matricule",
+    "departement",
+    "poste",
+    "telephone",
+  ];
+  for (const key of optional) {
+    const v = params[key];
+    if (typeof v === "string" && v.trim()) userDoc[key] = v.trim();
+  }
+
+  await db.collection("users").doc(userRecord.uid).set(userDoc);
+  return { uid: userRecord.uid, email };
+}
+
+export const submitJoinRequest = onCall(async (request) => {
+  const data = (request.data ?? {}) as {
+    nom?: unknown;
+    email?: unknown;
+    message?: unknown;
+    departement?: unknown;
+    poste?: unknown;
+  };
+
+  const nom = typeof data.nom === "string" ? data.nom.trim() : "";
+  const email = typeof data.email === "string" ? normalizeEmail(data.email) : "";
+  const message = typeof data.message === "string" ? data.message.trim() : "";
+  const departement = typeof data.departement === "string" ? data.departement.trim() : "";
+  const poste = typeof data.poste === "string" ? data.poste.trim() : "";
+
+  if (nom.length < 2) throw new HttpsError("invalid-argument", "Le nom doit contenir au moins 2 caractères");
+  if (!isValidEmail(email)) throw new HttpsError("invalid-argument", "Email invalide");
+
+  if (await emailAlreadyRegistered(email)) {
+    throw new HttpsError("already-exists", "Un compte existe déjà avec cet email. Connectez-vous.");
+  }
+
+  const pendingSnap = await db
+    .collection("demandes_acces")
+    .where("email", "==", email)
+    .where("statut", "==", "en_attente")
+    .limit(1)
+    .get();
+
+  if (!pendingSnap.empty) {
+    throw new HttpsError("already-exists", "Une demande est déjà en attente pour cet email");
+  }
+
+  const docData: Record<string, unknown> = {
+    nom,
+    email,
+    statut: "en_attente",
+    date_demande: FieldValue.serverTimestamp(),
+  };
+  if (message) docData.message = message;
+  if (departement) docData.departement = departement;
+  if (poste) docData.poste = poste;
+
+  const ref = await db.collection("demandes_acces").add(docData);
+  return { id: ref.id };
+});
+
+export const createEmployeeAccount = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Authentication required");
+  await assertAdmin(request.auth.uid);
+
+  const data = (request.data ?? {}) as {
+    nom?: unknown;
+    email?: unknown;
+    password?: unknown;
+    matricule?: unknown;
+    departement?: unknown;
+    poste?: unknown;
+    telephone?: unknown;
+  };
+
+  const result = await createEmployeAccount({
+    nom: typeof data.nom === "string" ? data.nom : "",
+    email: typeof data.email === "string" ? data.email : "",
+    password: typeof data.password === "string" ? data.password : "",
+    matricule: typeof data.matricule === "string" ? data.matricule : undefined,
+    departement: typeof data.departement === "string" ? data.departement : undefined,
+    poste: typeof data.poste === "string" ? data.poste : undefined,
+    telephone: typeof data.telephone === "string" ? data.telephone : undefined,
+    statut: "actif",
+    doit_changer_mdp: true,
+  });
+
+  return result;
+});
+
+export const processJoinRequest = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Authentication required");
+  await assertAdmin(request.auth.uid);
+
+  const data = (request.data ?? {}) as {
+    requestId?: unknown;
+    action?: unknown;
+    password?: unknown;
+  };
+
+  const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
+  const action = data.action;
+  const password = typeof data.password === "string" ? data.password : "";
+
+  if (!requestId) throw new HttpsError("invalid-argument", "requestId is required");
+  if (action !== "approve" && action !== "refuse") {
+    throw new HttpsError("invalid-argument", "action must be approve or refuse");
+  }
+
+  const ref = db.collection("demandes_acces").doc(requestId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Demande introuvable");
+
+  const demande = snap.data() as {
+    nom?: unknown;
+    email?: unknown;
+    telephone?: unknown;
+    statut?: unknown;
+  };
+
+  if (demande.statut !== "en_attente") {
+    throw new HttpsError("failed-precondition", "Cette demande a déjà été traitée");
+  }
+
+  if (action === "refuse") {
+    await ref.update({
+      statut: "refusee",
+      date_traitement: FieldValue.serverTimestamp(),
+      traite_par: request.auth.uid,
+    });
+    return { status: "refusee" as const };
+  }
+
+  const nom = typeof demande.nom === "string" ? demande.nom : "";
+  const email = typeof demande.email === "string" ? demande.email : "";
+  const telephone = typeof demande.telephone === "string" ? demande.telephone : undefined;
+
+  const created = await createEmployeAccount({
+    nom,
+    email,
+    password,
+    telephone,
+    statut: "actif",
+    doit_changer_mdp: true,
+  });
+
+  await ref.update({
+    statut: "approuvee",
+    date_traitement: FieldValue.serverTimestamp(),
+    traite_par: request.auth.uid,
+    userId: created.uid,
+  });
+
+  return { status: "approuvee" as const, uid: created.uid, email: created.email };
+});
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -63,6 +289,39 @@ function extractQrToken(input: string): string {
   }
 
   return raw;
+}
+
+async function getUserStatut(uid: string): Promise<"actif" | "desactive" | null> {
+  const snap = await db.collection("users").doc(uid).get();
+  if (!snap.exists) return null;
+  const statut = (snap.data() as { statut?: unknown } | undefined)?.statut;
+  if (statut === "actif" || statut === "desactive") return statut;
+  return "actif";
+}
+
+async function getGeofenceFromSettings(): Promise<{ latitude: number; longitude: number; radiusM: number } | null> {
+  const snap = await db.collection("parametres_entreprise").doc("default").get();
+  if (snap.exists) {
+    const data = snap.data() as { latitude?: unknown; longitude?: unknown; rayon_metres?: unknown };
+    const latitude = typeof data.latitude === "number" ? data.latitude : Number(data.latitude);
+    const longitude = typeof data.longitude === "number" ? data.longitude : Number(data.longitude);
+    const radiusM = typeof data.rayon_metres === "number" ? data.rayon_metres : Number(data.rayon_metres);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(radiusM) && radiusM > 0) {
+      return { latitude, longitude, radiusM };
+    }
+  }
+
+  const orgLatRaw = orgLat.value().trim();
+  const orgLonRaw = orgLon.value().trim();
+  const orgRadiusRaw = orgRadiusM.value().trim();
+  if (!orgLatRaw || !orgLonRaw || !orgRadiusRaw) return null;
+  const latitude = Number(orgLatRaw);
+  const longitude = Number(orgLonRaw);
+  const radiusM = Number(orgRadiusRaw);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radiusM) || radiusM <= 0) {
+    return null;
+  }
+  return { latitude, longitude, radiusM };
 }
 
 async function getUserRole(uid: string): Promise<"admin" | "employe" | null> {
@@ -294,6 +553,11 @@ export const createPointage = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Only employees can clock in/out via this function");
   }
 
+  const statut = await getUserStatut(uid);
+  if (statut !== "actif") {
+    throw new HttpsError("permission-denied", "Compte désactivé");
+  }
+
   const data = (request.data ?? {}) as {
     latitude?: unknown;
     longitude?: unknown;
@@ -308,50 +572,24 @@ export const createPointage = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "latitude/longitude are required");
   }
 
-  const provided = extractQrToken(qr);
-  const { token: expected, expiresAtMs } = await getCurrentQrToken();
-
-  const providedHash = sha256Hex(provided);
-  const expectedLooksHashed = expected.length === 64 && /^[0-9a-f]{64}$/i.test(expected);
-
-  if (expectedLooksHashed) {
-    // Hash-based validation (preferred)
-    if (providedHash !== expected) {
-      // Check grace period for previous hash
-      const snap = await db.collection("settings").doc("pointage").get();
-      const data = snap.exists ? (snap.data() as PointageSettings) : null;
-      const prevHash = typeof data?.previousQrTokenHash === "string" ? data.previousQrTokenHash.trim() : "";
-      const prevUntil = typeof data?.allowPreviousHashUntil?.toMillis === "function" ? data.allowPreviousHashUntil.toMillis() : null;
-      const prevOk = Boolean(prevHash && prevUntil && Date.now() <= prevUntil && providedHash === prevHash);
-      if (!prevOk) throw new HttpsError("permission-denied", "Invalid QR token");
+  try {
+    await validatePointageQrFromFirestore(db, qr, qrToken.value(), qrSecret.value());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Invalid QR token";
+    if (message.includes("not configured")) {
+      throw new HttpsError("failed-precondition", message);
     }
-  } else {
-    // Legacy clear-text validation (env or old doc)
-    if (provided !== expected) throw new HttpsError("permission-denied", "Invalid QR token");
+    throw new HttpsError("permission-denied", message);
   }
 
-  if (typeof expiresAtMs === "number" && Number.isFinite(expiresAtMs) && Date.now() > expiresAtMs) {
-    throw new HttpsError("permission-denied", "QR token expired");
+  const geofence = await getGeofenceFromSettings();
+  if (!geofence) {
+    throw new HttpsError("failed-precondition", "Paramètres entreprise (géolocalisation) non configurés");
   }
 
-  const orgLatRaw = orgLat.value().trim();
-  const orgLonRaw = orgLon.value().trim();
-  const orgRadiusRaw = orgRadiusM.value().trim();
-
-  if (!orgLatRaw || !orgLonRaw || !orgRadiusRaw) {
-    throw new HttpsError("failed-precondition", "ORG_LAT/ORG_LON/ORG_RADIUS_M must be configured on the function");
-  }
-
-  const centerLat = Number(orgLatRaw);
-  const centerLon = Number(orgLonRaw);
-  const radiusM = Number(orgRadiusRaw);
-  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLon) || !Number.isFinite(radiusM) || radiusM <= 0) {
-    throw new HttpsError("failed-precondition", "ORG_LAT/ORG_LON/ORG_RADIUS_M are invalid");
-  }
-
-  const distance = haversineMeters(centerLat, centerLon, lat, lon);
-  if (distance > radiusM) {
-    throw new HttpsError("permission-denied", `Outside allowed area (${Math.round(distance)}m > ${Math.round(radiusM)}m)`);
+  const distance = haversineMeters(geofence.latitude, geofence.longitude, lat, lon);
+  if (distance > geofence.radiusM) {
+    throw new HttpsError("permission-denied", `Outside allowed area (${Math.round(distance)}m > ${Math.round(geofence.radiusM)}m)`);
   }
 
   const now = new Date();

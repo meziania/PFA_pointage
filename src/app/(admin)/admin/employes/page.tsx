@@ -2,12 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, limit, onSnapshot, query } from "firebase/firestore";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { toast } from "sonner";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 import type { UserDoc } from "@/lib/data-model";
+import { apiErrorMessage, createEmployeeAccount, desactiverEmploye, reactiverEmploye, updateEmploye } from "@/lib/user-management";
+import { StatusBadge, employeStatutVariant } from "@/components/ui/status-badge";
 
 type Row = UserDoc & { id: string };
 type SortKey = "nom" | "matricule" | "departement" | "poste" | "profil";
@@ -38,12 +51,71 @@ function csvEscape(v: string): string {
   return s;
 }
 
+const createSchema = z.object({
+  nom: z.string().min(2, { message: "Au moins 2 caractères." }),
+  email: z.string().email({ message: "Email invalide." }),
+  password: z.string().min(6, { message: "Au moins 6 caractères." }),
+  matricule: z.string().optional(),
+  departement: z.string().optional(),
+  poste: z.string().optional(),
+  telephone: z.string().optional(),
+});
+
+const editSchema = z.object({
+  nom: z.string().min(2, { message: "Au moins 2 caractères." }),
+  email: z.string().email({ message: "Email invalide." }),
+  matricule: z.string().optional(),
+  departement: z.string().optional(),
+  poste: z.string().optional(),
+  telephone: z.string().optional(),
+  cin: z.string().optional(),
+  adresse: z.string().optional(),
+  dateNaissance: z.string().optional(),
+  dateEmbauche: z.string().optional(),
+});
+
 export default function AdminEmployesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [qtext, setQtext] = useState("");
   const [view, setView] = useState<"employes" | "tous">("employes");
   const [sort, setSort] = useState<SortKey>("profil");
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<Row | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
+
+  const editForm = useForm<z.infer<typeof editSchema>>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      nom: "",
+      email: "",
+      matricule: "",
+      departement: "",
+      poste: "",
+      telephone: "",
+      cin: "",
+      adresse: "",
+      dateNaissance: "",
+      dateEmbauche: "",
+    },
+  });
+
+  const createForm = useForm<z.infer<typeof createSchema>>({
+    resolver: zodResolver(createSchema),
+    defaultValues: {
+      nom: "",
+      email: "",
+      password: "",
+      matricule: "",
+      departement: "",
+      poste: "",
+      telephone: "",
+    },
+  });
 
   useEffect(() => {
     const db = getFirebaseFirestore();
@@ -84,14 +156,409 @@ export default function AdminEmployesPage() {
     return sorted;
   }, [rows, qtext, view, sort]);
 
+  async function onCreateEmployee(values: z.infer<typeof createSchema>) {
+    setCreating(true);
+    try {
+      const result = await createEmployeeAccount({
+        nom: values.nom,
+        email: values.email,
+        password: values.password,
+        matricule: values.matricule?.trim() || undefined,
+        departement: values.departement?.trim() || undefined,
+        poste: values.poste?.trim() || undefined,
+        telephone: values.telephone?.trim() || undefined,
+      });
+      setCreatedCredentials({ email: result.email, password: values.password });
+      createForm.reset();
+      toast.success("Compte employé créé. Transmettez les identifiants à l'employé.");
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "Impossible de créer le compte."));
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function deactivateEmployee(userId: string) {
+    setDeactivatingId(userId);
+    try {
+      await desactiverEmploye(userId);
+      toast.success("Employé désactivé — historique conservé");
+      if (editingEmployee?.id === userId) setEditingEmployee(null);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "Impossible de désactiver l'employé."));
+    } finally {
+      setDeactivatingId(null);
+    }
+  }
+
+  async function reactivateEmployee(userId: string) {
+    setReactivatingId(userId);
+    try {
+      await reactiverEmploye(userId);
+      toast.success("Employé réactivé — connexion à nouveau possible");
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "Impossible de réactiver l'employé."));
+    } finally {
+      setReactivatingId(null);
+    }
+  }
+
+  function startEdit(employee: Row) {
+    setEditingEmployee(employee);
+    editForm.reset({
+      nom: employee.nom ?? "",
+      email: employee.email ?? "",
+      matricule: employee.matricule ?? "",
+      departement: employee.departement ?? "",
+      poste: employee.poste ?? "",
+      telephone: employee.telephone ?? "",
+      cin: employee.cin ?? "",
+      adresse: employee.adresse ?? "",
+      dateNaissance: employee.dateNaissance ?? "",
+      dateEmbauche: employee.dateEmbauche ?? "",
+    });
+  }
+
+  async function onSaveEdit(values: z.infer<typeof editSchema>) {
+    if (!editingEmployee) return;
+    setSavingEdit(true);
+    try {
+      await updateEmploye(editingEmployee.id, {
+        nom: values.nom,
+        email: values.email,
+        matricule: values.matricule?.trim() || undefined,
+        departement: values.departement?.trim() || undefined,
+        poste: values.poste?.trim() || undefined,
+        telephone: values.telephone?.trim() || undefined,
+        cin: values.cin?.trim() || undefined,
+        adresse: values.adresse?.trim() || undefined,
+        dateNaissance: values.dateNaissance?.trim() || undefined,
+        dateEmbauche: values.dateEmbauche?.trim() || undefined,
+      });
+      toast.success("Profil employé mis à jour");
+      setEditingEmployee(null);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "Impossible de mettre à jour l'employé."));
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Employés</h1>
-        <p className="text-muted-foreground">
-          Par défaut, on affiche uniquement les comptes <span className="font-medium">employe</span> (les admins ne sont pas des employés).
-        </p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="font-heading text-xl text-brand-dark md:text-2xl">Employés</h1>
+          <p className="text-muted-foreground">
+            Créez, modifiez et désactivez les comptes employés. La désactivation conserve l&apos;historique de pointage et
+            congés.
+          </p>
+        </div>
+        <Button type="button" onClick={() => setShowCreate((v) => !v)}>
+          {showCreate ? "Masquer le formulaire" : "Créer un employé"}
+        </Button>
       </div>
+
+      {showCreate ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Nouveau compte employé</CardTitle>
+            <CardDescription>
+              Le mot de passe sera transmis manuellement à l&apos;employé (email, SMS, etc.).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {createdCredentials ? (
+              <div className="mb-4 space-y-2 rounded-lg border bg-muted/40 p-4 text-sm">
+                <p className="font-medium">Identifiants à transmettre</p>
+                <p>
+                  Email : <span className="font-mono">{createdCredentials.email}</span>
+                </p>
+                <p>
+                  Mot de passe : <span className="font-mono">{createdCredentials.password}</span>
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={() => setCreatedCredentials(null)}>
+                  Fermer
+                </Button>
+              </div>
+            ) : null}
+            <Form {...createForm}>
+              <form onSubmit={createForm.handleSubmit(onCreateEmployee)} className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={createForm.control}
+                  name="nom"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nom complet</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Jean Dupont" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="jean@exemple.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mot de passe temporaire</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="matricule"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Matricule</FormLabel>
+                      <FormControl>
+                        <Input placeholder="EMP-001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="departement"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Département</FormLabel>
+                      <FormControl>
+                        <Input placeholder="RH" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="poste"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Poste</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Assistant" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createForm.control}
+                  name="telephone"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Téléphone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+212..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="md:col-span-2">
+                  <Button type="submit" disabled={creating}>
+                    {creating ? "Création..." : "Créer le compte"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {editingEmployee ? (
+        <Card>
+          <CardHeader className="gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle>Modifier l&apos;employé</CardTitle>
+              <CardDescription>{editingEmployee.email}</CardDescription>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditingEmployee(null)}>
+              Fermer
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onSaveEdit)} className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={editForm.control}
+                  name="nom"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nom complet</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="matricule"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Matricule</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="departement"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Département</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="poste"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Poste</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="telephone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Téléphone</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="cin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CIN</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="adresse"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Adresse</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="dateNaissance"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date de naissance</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="dateEmbauche"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date d&apos;embauche</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex flex-wrap gap-2 md:col-span-2">
+                  <Button type="submit" disabled={savingEdit}>
+                    {savingEdit ? "Enregistrement..." : "Enregistrer"}
+                  </Button>
+                  {(editingEmployee.statut ?? "actif") === "actif" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={deactivatingId === editingEmployee.id}
+                      onClick={() => deactivateEmployee(editingEmployee.id)}
+                    >
+                      Désactiver
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={reactivatingId === editingEmployee.id}
+                      onClick={() => reactivateEmployee(editingEmployee.id)}
+                    >
+                      Réactiver
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader className="gap-3 md:flex-row md:items-center md:justify-between">
@@ -161,6 +628,8 @@ export default function AdminEmployesPage() {
                   <th className="py-2 pr-4">Département</th>
                   <th className="py-2 pr-4">Poste</th>
                   <th className="py-2 pr-4">Profil</th>
+                  <th className="py-2 pr-4">Statut</th>
+                  <th className="py-2 pr-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -188,11 +657,47 @@ export default function AdminEmployesPage() {
                         );
                       })()}
                     </td>
+                    <td className="py-3 pr-4">
+                      <StatusBadge variant={employeStatutVariant(r.statut)}>
+                        {(r.statut ?? "actif") === "actif" ? "Actif" : "Désactivé"}
+                      </StatusBadge>
+                    </td>
+                    <td className="py-3 pr-4">
+                      {r.role === "employe" ? (
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button type="button" size="sm" variant="outline" onClick={() => startEdit(r)}>
+                            Modifier
+                          </Button>
+                          {(r.statut ?? "actif") === "actif" ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={deactivatingId === r.id}
+                              onClick={() => deactivateEmployee(r.id)}
+                            >
+                              Désactiver
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={reactivatingId === r.id}
+                              onClick={() => reactivateEmployee(r.id)}
+                            >
+                              Réactiver
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-right text-xs text-muted-foreground">—</div>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {!loading && filtered.length === 0 ? (
                   <tr>
-                    <td className="py-6 text-muted-foreground" colSpan={6}>
+                    <td className="py-6 text-muted-foreground" colSpan={8}>
                       Aucun résultat.
                     </td>
                   </tr>

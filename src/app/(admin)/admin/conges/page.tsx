@@ -10,6 +10,7 @@ import type { CongeDoc, CongeStatut } from "@/lib/data-model";
 import { updateCongeStatut } from "@/lib/firestore-helpers";
 import { AbsenceCalendar } from "@/components/calendar/absence-calendar";
 import { CongesTabNav } from "@/components/conges/conges-tab-nav";
+import { StatusBadge, congeStatutVariant } from "@/components/ui/status-badge";
 import type { CongeCalendarRow } from "@/lib/calendar-utils";
 
 type Row = CongeDoc & { id: string };
@@ -147,7 +148,7 @@ export default function AdminCongesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Congés & calendrier</h1>
+        <h1 className="font-heading text-xl text-brand-dark md:text-2xl">Congés & calendrier</h1>
         <p className="mt-1 text-muted-foreground">
           Même données partout : valider une demande met à jour le calendrier équipe automatiquement.
         </p>
@@ -168,31 +169,19 @@ export default function AdminCongesPage() {
 
       {tab === "validation" ? (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium text-muted-foreground">En attente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-[color-mix(in_oklch,var(--warning)_70%,white)]">{stats.pending}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium text-muted-foreground">Validés</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-[color-mix(in_oklch,var(--success)_70%,white)]">{stats.validated}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium text-muted-foreground">Refusés</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-[color-mix(in_oklch,var(--destructive)_70%,white)]">{stats.refused}</div>
-              </CardContent>
-            </Card>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="admin-kpi">
+              <div className="text-xs text-muted-foreground">En attente</div>
+              <div className="mt-1 font-heading text-2xl tabular-data text-status-pending-text">{stats.pending}</div>
+            </div>
+            <div className="admin-kpi">
+              <div className="text-xs text-muted-foreground">Validés</div>
+              <div className="mt-1 font-heading text-2xl tabular-data text-brand">{stats.validated}</div>
+            </div>
+            <div className="admin-kpi">
+              <div className="text-xs text-muted-foreground">Refusés</div>
+              <div className="mt-1 font-heading text-2xl tabular-data text-status-rejected-text">{stats.refused}</div>
+            </div>
           </div>
 
           <Card>
@@ -253,17 +242,9 @@ export default function AdminCongesPage() {
                             </span>
                           </td>
                           <td className="py-2 pr-4">
-                            <span
-                              className={
-                                r.statut === "valide"
-                                  ? "rounded-full border bg-[color-mix(in_oklch,var(--success)_18%,transparent)] px-3 py-1 text-xs font-medium"
-                                  : r.statut === "refuse"
-                                    ? "rounded-full border bg-[color-mix(in_oklch,var(--destructive)_18%,transparent)] px-3 py-1 text-xs font-medium"
-                                    : "rounded-full border bg-[color-mix(in_oklch,var(--warning)_18%,transparent)] px-3 py-1 text-xs font-medium"
-                              }
-                            >
+                            <StatusBadge variant={congeStatutVariant(r.statut)}>
                               {r.statut === "valide" ? "Validé" : r.statut === "refuse" ? "Refusé" : "En attente"}
-                            </span>
+                            </StatusBadge>
                           </td>
                           <td className="py-2 pr-4">
                             <div className="flex flex-wrap justify-end gap-2">

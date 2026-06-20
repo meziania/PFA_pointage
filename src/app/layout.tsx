@@ -1,16 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { AppProviders } from "@/components/providers/app-providers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
   subsets: ["latin"],
+  weight: ["600"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -30,8 +33,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+    { media: "(prefers-color-scheme: light)", color: "#0f6e56" },
+    { media: "(prefers-color-scheme: dark)", color: "#04342c" },
   ],
 };
 
@@ -42,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} font-sans min-h-dvh`}>
+      <body suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} min-h-dvh`}>
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

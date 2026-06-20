@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Firebase service account keys (never commit)
+serviceAccountKey.json
+secrets/
+*-firebase-adminsdk-*.json
+
 # Firebase functions build output
 functions/lib/
 

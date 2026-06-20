@@ -3,12 +3,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
-import { getUserDoc, getUserRole } from "@/lib/firestore-helpers";
-import type { UserRole } from "@/lib/data-model";
+import { getUserDoc, getUserRole, getUserStatut, userMustChangePassword } from "@/lib/firestore-helpers";
+import type { UserRole, UserStatut } from "@/lib/data-model";
 
 type AuthState = {
   user: User | null;
   role: UserRole | null;
+  statut: UserStatut | null;
+  mustChangePassword: boolean;
   profilePhotoURL: string | null;
   loading: boolean;
   refreshProfilePhoto: () => Promise<void>;
@@ -19,6 +21,8 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => getFirebaseAuth()?.currentUser ?? null);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [statut, setStatut] = useState<UserStatut | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [profilePhotoURL, setProfilePhotoURL] = useState<string | null>(null);
   const [loading, setLoading] = useState(() => Boolean(getFirebaseAuth()));
 
@@ -30,8 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const doc = await getUserDoc(u.uid);
-      setProfilePhotoURL(doc?.photoURL ?? u.photoURL ?? null);
+      const profile = await getUserDoc(u.uid);
+      setProfilePhotoURL(profile?.photoURL ?? u.photoURL ?? null);
     } catch {
       setProfilePhotoURL(u.photoURL ?? null);
     }
@@ -45,6 +49,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       if (!u) {
         setRole(null);
+        setStatut(null);
+        setMustChangePassword(false);
         setProfilePhotoURL(null);
         setLoading(false);
         return;
@@ -53,17 +59,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       try {
         let r: UserRole | null = null;
+        let s: UserStatut | null = null;
+        let mustChange = false;
+
         for (let i = 0; i < 10; i += 1) {
           r = await getUserRole(u.uid);
-          if (r) break;
+          s = await getUserStatut(u.uid);
+          mustChange = await userMustChangePassword(u.uid);
+          if (r && s) break;
           await new Promise((res) => setTimeout(res, 300));
         }
-        setRole(r);
 
-        const doc = await getUserDoc(u.uid);
-        setProfilePhotoURL(doc?.photoURL ?? u.photoURL ?? null);
+        setRole(r);
+        setStatut(s);
+        setMustChangePassword(mustChange);
+
+        const profile = await getUserDoc(u.uid);
+        setProfilePhotoURL(profile?.photoURL ?? u.photoURL ?? null);
       } catch {
         setRole(null);
+        setStatut(null);
+        setMustChangePassword(false);
         setProfilePhotoURL(u.photoURL ?? null);
       } finally {
         setLoading(false);
@@ -74,8 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, role, profilePhotoURL, loading, refreshProfilePhoto }),
-    [user, role, profilePhotoURL, loading, refreshProfilePhoto],
+    () => ({ user, role, statut, mustChangePassword, profilePhotoURL, loading, refreshProfilePhoto }),
+    [user, role, statut, mustChangePassword, profilePhotoURL, loading, refreshProfilePhoto],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

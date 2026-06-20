@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, getCountFromServer, getDocs, query, where } from "firebase/firestore";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getFirebaseFirestore } from "@/lib/firebase-firestore";
+import { toast } from "sonner";
+import { collection, getCountFromServer, getDocs, limit, query, where } from "firebase/firestore";
 import {
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   Pie,
@@ -16,28 +15,51 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { PointageDoc } from "@/lib/data-model";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { getFirebaseFirestore } from "@/lib/firebase-firestore";
+import { listPointages } from "@/lib/firestore-helpers";
+import type { PointageDoc, UserDoc } from "@/lib/data-model";
+import {
+  computeAttendanceToday,
+  computeDailyHours,
+  detectAnomalies,
+  filterPointages,
+  lastNDaysYmd,
+  todayYmd,
+  type EmployeeMini,
+  type PointageRow,
+} from "@/lib/pointage-analytics";
+import { StatusBadge, congeStatutVariant } from "@/components/ui/status-badge";
 
-type Kpi = { label: string; value: string };
-type DayRow = { day: string; pointages: number };
 type CongeStatusKey = "en_attente" | "valide" | "refuse";
 type CongeSlice = { key: CongeStatusKey; label: string; value: number; color: string };
+type HoursDayRow = { day: string; heures: number };
 
-function lastNDaysYmd(n: number): string[] {
-  const out: string[] = [];
-  const d = new Date();
-  for (let i = n - 1; i >= 0; i -= 1) {
-    const dd = new Date(d);
-    dd.setDate(d.getDate() - i);
-    const yyyy = dd.getFullYear();
-    const mm = String(dd.getMonth() + 1).padStart(2, "0");
-    const day = String(dd.getDate()).padStart(2, "0");
-    out.push(`${yyyy}-${mm}-${day}`);
-  }
-  return out;
+function csvEscape(v: string): string {
+  const s = v ?? "";
+  if (/[",\n]/.test(s)) return `"${s.replaceAll("\"", "\"\"")}"`;
+  return s;
 }
 
-function MiniTooltip({
+function downloadText(filename: string, content: string, mime = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function formatPointageType(type: PointageDoc["type"]): string {
+  return type === "entree" ? "Entrée" : "Sortie";
+}
+
+function HoursTooltip({
   active,
   payload,
   label,
@@ -51,142 +73,256 @@ function MiniTooltip({
   return (
     <div className="rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
       <div className="font-medium">{label}</div>
-      <div className="text-muted-foreground">{v} pointage(s)</div>
+      <div className="text-muted-foreground">{v} h travaillées</div>
     </div>
   );
 }
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [counts, setCounts] = useState<{ users: number; pointages: number; congesPending: number }>({
-    users: 0,
-    pointages: 0,
-    congesPending: 0,
-  });
-  const [last7, setLast7] = useState<DayRow[]>([]);
+  const [rows, setRows] = useState<PointageRow[]>([]);
+  const [employees, setEmployees] = useState<EmployeeMini[]>([]);
+  const [congesPending, setCongesPending] = useState(0);
   const [congesByStatus, setCongesByStatus] = useState<CongeSlice[]>([
-    { key: "en_attente", label: "En attente", value: 0, color: "hsl(var(--primary))" },
-    { key: "valide", label: "Validé", value: 0, color: "hsl(142 71% 45%)" },
-    { key: "refuse", label: "Refusé", value: 0, color: "hsl(0 84% 60%)" },
+    { key: "en_attente", label: "En attente", value: 0, color: "#633806" },
+    { key: "valide", label: "Validé", value: 0, color: "#0f6e56" },
+    { key: "refuse", label: "Refusé", value: 0, color: "#791f1f" },
   ]);
+  const [hoursByDay, setHoursByDay] = useState<HoursDayRow[]>([]);
+
+  const [filterMode, setFilterMode] = useState<"day" | "range">("day");
+  const [employeeId, setEmployeeId] = useState("");
+  const [date, setDate] = useState(() => todayYmd());
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+
+  async function loadData() {
+    const db = getFirebaseFirestore();
+    if (!db) {
+      toast.error("Firestore non configuré");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const [pointages, usersSnap, congesPendingSnap, congesValideSnap, congesRefuseSnap] = await Promise.all([
+        listPointages(500),
+        getDocs(query(collection(db, "users"), limit(500))),
+        getCountFromServer(query(collection(db, "conges"), where("statut", "==", "en_attente"))),
+        getCountFromServer(query(collection(db, "conges"), where("statut", "==", "valide"))),
+        getCountFromServer(query(collection(db, "conges"), where("statut", "==", "refuse"))),
+      ]);
+
+      const usersList: EmployeeMini[] = usersSnap.docs.map((d) => {
+        const data = d.data() as Partial<UserDoc>;
+        return {
+          id: d.id,
+          nom: data.nom ?? "(sans nom)",
+          email: data.email ?? "",
+          role: data.role === "admin" || data.role === "employe" ? data.role : "employe",
+          statut: data.statut ?? "actif",
+        };
+      });
+      usersList.sort((a, b) => a.nom.localeCompare(b.nom));
+
+      const days = lastNDaysYmd(7);
+      setHoursByDay(
+        days.map((ymd) => ({
+          day: ymd.slice(5),
+          heures: computeDailyHours(pointages, ymd),
+        })),
+      );
+
+      setRows(pointages);
+      setEmployees(usersList);
+      setCongesPending(congesPendingSnap.data().count);
+      setCongesByStatus((prev) => [
+        { ...prev[0], value: congesPendingSnap.data().count },
+        { ...prev[1], value: congesValideSnap.data().count },
+        { ...prev[2], value: congesRefuseSnap.data().count },
+      ]);
+    } catch {
+      toast.error("Impossible de charger le dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const db = getFirebaseFirestore();
-    if (!db) return;
-
-    void (async () => {
-      try {
-        const users = await getCountFromServer(collection(db, "users"));
-        const pointages = await getCountFromServer(collection(db, "pointages"));
-        const congesPending = await getCountFromServer(query(collection(db, "conges"), where("statut", "==", "en_attente")));
-        const congesValide = await getCountFromServer(query(collection(db, "conges"), where("statut", "==", "valide")));
-        const congesRefuse = await getCountFromServer(query(collection(db, "conges"), where("statut", "==", "refuse")));
-
-        // Graphique MVP: nombre de pointages par jour (7 derniers jours)
-        const days = lastNDaysYmd(7);
-        const countsByDay = new Map<string, number>(days.map((d) => [d, 0]));
-        // On ne récupère que les 7 jours (in <= 10) pour éviter de scanner toute la collection.
-        const snap = await getDocs(query(collection(db, "pointages"), where("date", "in", days)));
-        for (const doc of snap.docs) {
-          const p = doc.data() as Partial<PointageDoc>;
-          const ymd = typeof p.date === "string" ? p.date : null;
-          if (!ymd) continue;
-          if (!countsByDay.has(ymd)) continue;
-          countsByDay.set(ymd, (countsByDay.get(ymd) ?? 0) + 1);
-        }
-        setLast7(days.map((d) => ({ day: d.slice(5), pointages: countsByDay.get(d) ?? 0 })));
-        setCongesByStatus((prev) => [
-          { ...prev[0], value: congesPending.data().count },
-          { ...prev[1], value: congesValide.data().count },
-          { ...prev[2], value: congesRefuse.data().count },
-        ]);
-
-        setCounts({
-          users: users.data().count,
-          pointages: pointages.data().count,
-          congesPending: congesPending.data().count,
-        });
-      } finally {
-        setLoading(false);
-      }
-    })();
+    queueMicrotask(() => void loadData());
   }, []);
 
-  const kpis = useMemo<Kpi[]>(
-    () => [
-      { label: "Employés", value: loading ? "…" : String(counts.users) },
-      { label: "Pointages", value: loading ? "…" : String(counts.pointages) },
-      { label: "Congés en attente", value: loading ? "…" : String(counts.congesPending) },
-    ],
-    [counts, loading],
+  const activeEmployees = useMemo(() => employees.filter((e) => e.role === "employe" && (e.statut ?? "actif") === "actif"), [employees]);
+
+  const attendanceToday = useMemo(
+    () => computeAttendanceToday(activeEmployees, rows, todayYmd()),
+    [activeEmployees, rows],
   );
 
+  const employeeOptions = useMemo(() => activeEmployees, [activeEmployees]);
+
+  const userById = useMemo(() => {
+    const map = new Map<string, EmployeeMini>();
+    for (const u of employees) map.set(u.id, u);
+    return map;
+  }, [employees]);
+
+  const filtered = useMemo(
+    () => filterPointages(rows, { employeeId, filterMode, date, dateDebut, dateFin }),
+    [rows, employeeId, filterMode, date, dateDebut, dateFin],
+  );
+
+  const anomalies = useMemo(() => detectAnomalies(filtered), [filtered]);
+
+  const kpis = useMemo(
+    () => [
+      { label: "Employés actifs", value: loading ? "…" : String(attendanceToday.total) },
+      { label: "Présents aujourd'hui", value: loading ? "…" : String(attendanceToday.present) },
+      { label: "Absents aujourd'hui", value: loading ? "…" : String(attendanceToday.absent) },
+      { label: "Congés en attente", value: loading ? "…" : String(congesPending) },
+    ],
+    [attendanceToday, congesPending, loading],
+  );
+
+  function renderUserCell(uid: string) {
+    const u = userById.get(uid);
+    return (
+      <div className="min-w-[180px] max-w-[320px]" title={u?.email ? `${u.nom} · ${u.email}` : u?.nom ?? ""}>
+        <div className="truncate font-medium">{u?.nom ?? "Utilisateur inconnu"}</div>
+        {u?.email ? <div className="truncate text-xs text-muted-foreground">{u.email}</div> : null}
+      </div>
+    );
+  }
+
+  function exportCsv() {
+    const header = ["userNom", "userEmail", "date", "heure", "type", "latitude", "longitude", "valide"];
+    const lines = filtered.map((r) => {
+      const u = userById.get(r.userId);
+      return [
+        u?.nom ?? "",
+        u?.email ?? "",
+        r.date,
+        r.heure,
+        r.type,
+        typeof r.latitude === "number" ? String(r.latitude) : "",
+        typeof r.longitude === "number" ? String(r.longitude) : "",
+        String(Boolean(r.valide)),
+      ];
+    });
+    const csv = [header, ...lines].map((row) => row.map(csvEscape).join(",")).join("\n");
+    downloadText(`dashboard-pointages-${todayYmd()}.csv`, csv, "text/csv;charset=utf-8");
+    toast.success("Export CSV généré");
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Indicateurs globaux (MVP).</p>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-heading text-xl text-brand-dark md:text-2xl">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Présence, heures, congés et anomalies — vue dense.</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>
+          {loading ? "…" : "Actualiser"}
+        </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((k) => (
-          <Card key={k.label}>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">{k.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{k.value}</div>
-            </CardContent>
-          </Card>
+          <div key={k.label} className="admin-kpi">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{k.label}</div>
+            <div className="mt-1 font-heading text-2xl tabular-data text-brand-dark md:text-3xl">{k.value}</div>
+          </div>
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(217,92%,60%,0.18),transparent_55%)]" />
-          <CardHeader className="relative">
-            <CardTitle>Pointages (7 jours)</CardTitle>
-            <CardDescription>Tendance quotidienne des pointages.</CardDescription>
+      <Card className="border-brand/15">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Filtres pointages</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div>
+              <div className="mb-1 text-xs text-muted-foreground">Employé</div>
+              <select
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">Tous</option>
+                {employeeOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div className="mb-1 text-xs text-muted-foreground">Mode</div>
+              <div className="flex gap-1">
+                <Button type="button" size="sm" variant={filterMode === "day" ? "default" : "outline"} onClick={() => setFilterMode("day")}>
+                  Jour
+                </Button>
+                <Button type="button" size="sm" variant={filterMode === "range" ? "default" : "outline"} onClick={() => setFilterMode("range")}>
+                  Période
+                </Button>
+              </div>
+            </div>
+            <div>
+              {filterMode === "day" ? (
+                <>
+                  <div className="mb-1 text-xs text-muted-foreground">Date</div>
+                  <Input type="date" className="h-9" value={date} onChange={(e) => setDate(e.target.value)} />
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="mb-1 text-xs text-muted-foreground">Début</div>
+                    <Input type="date" className="h-9" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
+                  </div>
+                  <div>
+                    <div className="mb-1 text-xs text-muted-foreground">Fin</div>
+                    <Input type="date" className="h-9" value={dateFin} onChange={(e) => setDateFin(e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
+              Export CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card className="border-brand/15">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Heures travaillées (7 j)</CardTitle>
           </CardHeader>
-          <CardContent className="relative space-y-3">
-            <div className="h-64 w-full">
+          <CardContent>
+            <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={last7} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="pointagesFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" tickLine={false} axisLine={false} />
-                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                  <Tooltip content={<MiniTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="pointages"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    fill="url(#pointagesFill)"
-                    dot={{ r: 2, strokeWidth: 0, fill: "hsl(var(--primary))" }}
-                    activeDot={{ r: 5 }}
-                  />
-                </AreaChart>
+                <BarChart data={hoursByDay} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                  <Tooltip content={<HoursTooltip />} />
+                  <Bar dataKey="heures" fill="#0f6e56" radius={[3, 3, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-            {loading ? <div className="text-xs text-muted-foreground">Chargement…</div> : null}
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(142,71%,45%,0.14),transparent_55%)]" />
-          <CardHeader className="relative">
-            <CardTitle>Demandes de congés</CardTitle>
-            <CardDescription>Répartition par statut (en attente / validé / refusé).</CardDescription>
+        <Card className="border-brand/15">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Congés par statut</CardTitle>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="grid gap-4 md:grid-cols-[260px_1fr]">
-              <div className="h-64 w-full">
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-[180px_1fr]">
+              <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Tooltip />
@@ -194,10 +330,10 @@ export default function AdminDashboardPage() {
                       data={congesByStatus}
                       dataKey="value"
                       nameKey="label"
-                      innerRadius={58}
-                      outerRadius={86}
-                      paddingAngle={3}
-                      stroke="hsl(var(--background))"
+                      innerRadius={50}
+                      outerRadius={78}
+                      paddingAngle={2}
+                      stroke="var(--card)"
                       strokeWidth={2}
                     >
                       {congesByStatus.map((s) => (
@@ -207,25 +343,92 @@ export default function AdminDashboardPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-
-              <div className="space-y-3 text-sm">
-                <div className="rounded-lg border bg-background/60 p-3">
-                  <div className="text-xs text-muted-foreground">Total</div>
-                  <div className="text-2xl font-bold">{congesByStatus.reduce((a, b) => a + b.value, 0)}</div>
-                </div>
-                <div className="space-y-2">
-                  {congesByStatus.map((s) => (
-                    <div key={s.key} className="flex items-center justify-between rounded-md border bg-background/60 px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
-                        <span className="font-medium">{s.label}</span>
-                      </div>
-                      <span className="tabular-nums">{s.value}</span>
-                    </div>
-                  ))}
-                </div>
-                {loading ? <div className="text-xs text-muted-foreground">Chargement…</div> : null}
+              <div className="space-y-1.5 text-sm">
+                {congesByStatus.map((s) => (
+                  <div key={s.key} className="flex items-center justify-between rounded-md border border-border px-2.5 py-1.5">
+                    <StatusBadge variant={congeStatutVariant(s.key)}>{s.label}</StatusBadge>
+                    <span className="tabular-data font-medium">{s.value}</span>
+                  </div>
+                ))}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card className="border-brand/15">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Pointages</CardTitle>
+            <CardDescription className="text-xs">{`${filtered.length} ligne(s)`}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-[380px] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-card text-left text-xs text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="py-2 pr-4">Employé</th>
+                    <th className="py-2 pr-4">Date</th>
+                    <th className="py-2 pr-4">Heure</th>
+                    <th className="py-2 pr-4">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((r) => (
+                    <tr key={r.id} className="border-b last:border-0">
+                      <td className="py-2 pr-4">{renderUserCell(r.userId)}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{r.date}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{r.heure}</td>
+                      <td className="py-2 pr-4">{formatPointageType(r.type)}</td>
+                    </tr>
+                  ))}
+                  {!loading && filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-muted-foreground">
+                        Aucune donnée pour ces filtres.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-brand/15">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Anomalies</CardTitle>
+            <CardDescription className="text-xs">Retards, absences, &lt; 8 h</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-[380px] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-card text-left text-xs text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="py-2 pr-4">Employé</th>
+                    <th className="py-2 pr-4">Date</th>
+                    <th className="py-2 pr-4">Anomalie</th>
+                    <th className="py-2 pr-4">Détails</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {anomalies.map((a) => (
+                    <tr key={`${a.key}|${a.kind}`} className="border-b last:border-0">
+                      <td className="py-2 pr-4">{renderUserCell(a.userId)}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{a.date}</td>
+                      <td className="py-2 pr-4">{a.kind}</td>
+                      <td className="py-2 pr-4">{a.details}</td>
+                    </tr>
+                  ))}
+                  {!loading && anomalies.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-muted-foreground">
+                        Aucune anomalie détectée.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
@@ -233,4 +436,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-

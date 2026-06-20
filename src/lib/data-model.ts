@@ -1,28 +1,52 @@
 export type UserRole = "admin" | "employe";
+export type UserStatut = "actif" | "desactive";
+export type DemandeAccesStatut = "en_attente" | "approuvee" | "refusee";
 
 export type UserDoc = {
   nom: string;
   email: string;
   role: UserRole;
-  // Profil employé (optionnel)
+  statut: UserStatut;
+  doit_changer_mdp?: boolean;
   matricule?: string;
   telephone?: string;
   departement?: string;
   poste?: string;
   cin?: string;
   adresse?: string;
-  dateNaissance?: string; // YYYY-MM-DD
-  dateEmbauche?: string; // YYYY-MM-DD
+  dateNaissance?: string;
+  dateEmbauche?: string;
   photoURL?: string;
   createdAt?: unknown;
+  updatedAt?: unknown;
+};
+
+export type DemandeAccesDoc = {
+  nom: string;
+  email: string;
+  telephone?: string;
+  message?: string;
+  statut: DemandeAccesStatut;
+  date_demande?: unknown;
+  date_traitement?: unknown;
+  traite_par?: string;
+  userId?: string;
+};
+
+export type ParametresEntrepriseDoc = {
+  latitude: number;
+  longitude: number;
+  rayon_metres: number;
+  updatedAt?: unknown;
+  updatedBy?: string;
 };
 
 export type PointageType = "entree" | "sortie";
 
 export type PointageDoc = {
   userId: string;
-  date: string; // YYYY-MM-DD
-  heure: string; // HH:MM
+  date: string;
+  heure: string;
   type: PointageType;
   latitude?: number | null;
   longitude?: number | null;
@@ -35,8 +59,8 @@ export type CongeStatut = "en_attente" | "valide" | "refuse";
 
 export type CongeDoc = {
   userId: string;
-  dateDebut: string; // YYYY-MM-DD
-  dateFin: string; // YYYY-MM-DD
+  dateDebut: string;
+  dateFin: string;
   type: CongeType;
   statut: CongeStatut;
   createdAt?: unknown;
@@ -51,3 +75,7 @@ export type NotificationDoc = {
   createdAt?: unknown;
 };
 
+/** @deprecated Utiliser DemandeAccesDoc / collection demandes_acces */
+export type DemandeAdhesionStatut = DemandeAccesStatut;
+/** @deprecated Utiliser DemandeAccesDoc */
+export type DemandeAdhesionDoc = DemandeAccesDoc;

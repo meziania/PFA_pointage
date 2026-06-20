@@ -20,7 +20,7 @@ export function LandingView() {
               <Link href="/login">Connexion</Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href="/register">Créer un compte</Link>
+              <Link href="/register">Demander à rejoindre</Link>
             </Button>
           </nav>
         </div>
@@ -52,7 +52,7 @@ export function LandingView() {
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/register">Inscription</Link>
+              <Link href="/register">Demander à rejoindre</Link>
             </Button>
           </div>
         </motion.div>

@@ -11,6 +11,17 @@ datasource db {
 // ENUMS POUR LIMITER LES VALEURS AUTORISÉES
 // ==========================================
 
+enum UserStatut {
+  actif
+  desactive
+}
+
+enum DemandeAccesStatut {
+  en_attente
+  approuvee
+  refusee
+}
+
 enum Role {
   admin
   employe
@@ -38,17 +49,42 @@ enum CongeStatut {
 // ==========================================
 
 model User {
-  id        String     @id @default(auto()) @map("_id") @db.ObjectId
-  nom       String
-  email     String     @unique // Validation: Email unique
-  password  String     // Doit être hashé dans la logique métier
-  role      Role
+  id               String     @id @default(auto()) @map("_id") @db.ObjectId
+  nom              String
+  email            String     @unique
+  password         String
+  role             Role
+  statut           UserStatut @default(actif)
+  doit_changer_mdp Boolean    @default(false)
 
-  // Relations (One-to-Many)
   pointages Pointage[]
   conges    Conge[]
 
-  @@map("users") // Nom exact de la collection dans MongoDB
+  @@map("users")
+}
+
+model DemandeAcces {
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
+  nom             String
+  email           String
+  telephone       String?
+  message         String?
+  statut          DemandeAccesStatut @default(en_attente)
+  date_demande    DateTime           @default(now())
+  date_traitement DateTime?
+  traite_par      String?
+  userId          String?            @db.ObjectId
+
+  @@map("demandes_acces")
+}
+
+model ParametresEntreprise {
+  id           String @id @default("default") @map("_id")
+  latitude     Float
+  longitude    Float
+  rayon_metres Float
+
+  @@map("parametres_entreprise")
 }
 
 model Pointage {

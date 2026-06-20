@@ -29,37 +29,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
 
-      allow create: if signedIn()
-        && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly([
-          "nom",
-          "email",
-          "role",
-          "createdAt",
-          // Profil employé (optionnel)
-          "matricule",
-          "telephone",
-          "departement",
-          "poste",
-          "cin",
-          "adresse",
-          "dateNaissance",
-          "dateEmbauche",
-          "photoURL"
-        ])
-        && request.resource.data.nom is string
-        && request.resource.data.email is string
-        && request.resource.data.role in ["employe", "admin"]
-        && (!("matricule" in request.resource.data) || request.resource.data.matricule is string)
-        && (!("telephone" in request.resource.data) || request.resource.data.telephone is string)
-        && (!("departement" in request.resource.data) || request.resource.data.departement is string)
-        && (!("poste" in request.resource.data) || request.resource.data.poste is string)
-        && (!("cin" in request.resource.data) || request.resource.data.cin is string)
-        && (!("adresse" in request.resource.data) || request.resource.data.adresse is string)
-        && (!("dateNaissance" in request.resource.data) || request.resource.data.dateNaissance is string)
-        && (!("dateEmbauche" in request.resource.data) || request.resource.data.dateEmbauche is string)
-        && (!("photoURL" in request.resource.data) || request.resource.data.photoURL is string)
-        && request.resource.data.createdAt == request.time;
+      // Comptes créés uniquement par l'admin (Cloud Functions + Admin SDK).
+      allow create: if false;
 
       // Admin can update any user doc.
       // Employee can update only their profile fields (not role/email/createdAt).
@@ -114,6 +85,25 @@ service cloud.firestore {
     // App settings (QR rotation, etc.) - admin only
     match /settings/{docId} {
       allow read, write: if isAdmin();
+    }
+
+    match /demandes_acces/{demandeId} {
+      allow read: if isAdmin();
+      allow create: if false;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "statut",
+          "date_traitement",
+          "traite_par",
+          "userId"
+        ])
+        && request.resource.data.statut in ["en_attente", "approuvee", "refusee"];
+      allow delete: if false;
+    }
+
+    match /parametres_entreprise/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
     }
 
     // In-app notifications - employee can read their own notifications

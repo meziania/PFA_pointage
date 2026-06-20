@@ -16,7 +16,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
-import type { CongeDoc, CongeStatut, PointageDoc, UserDoc, UserRole } from "@/lib/data-model";
+import type { CongeDoc, CongeStatut, DemandeAdhesionDoc, DemandeAdhesionStatut, PointageDoc, UserDoc, UserRole } from "@/lib/data-model";
 
 function requireDb() {
   const db = getFirebaseFirestore();
@@ -39,9 +39,21 @@ export async function ensureUserDoc(params: {
     nom: params.nom,
     email: params.email,
     role: params.role ?? "employe",
+    statut: "actif",
     createdAt: serverTimestamp(),
   };
   await setDoc(ref, userDoc);
+}
+
+export async function getUserStatut(uid: string): Promise<UserDoc["statut"] | null> {
+  const doc = await getUserDoc(uid);
+  if (!doc) return null;
+  return doc.statut ?? "actif";
+}
+
+export async function userMustChangePassword(uid: string): Promise<boolean> {
+  const userDoc = await getUserDoc(uid);
+  return Boolean(userDoc?.doit_changer_mdp);
 }
 
 export async function getUserRole(uid: string): Promise<UserRole | null> {
@@ -117,27 +129,7 @@ export async function updateEmployeeProfile(
   const data = buildEmployeeProfileData(patch, existing);
 
   if (!snap.exists()) {
-    const createPayload: Record<string, unknown> = {
-      nom: patch.nom.trim(),
-      email: context.email.trim(),
-      role: "employe" satisfies UserRole,
-      createdAt: serverTimestamp(),
-    };
-    for (const key of [
-      "matricule",
-      "telephone",
-      "departement",
-      "poste",
-      "cin",
-      "adresse",
-      "dateNaissance",
-      "dateEmbauche",
-    ] as const) {
-      const v = patch[key];
-      if (typeof v === "string" && v.trim()) createPayload[key] = v.trim();
-    }
-    await setDoc(ref, createPayload);
-    return;
+    throw new Error("Profil introuvable. Contactez l'administrateur.");
   }
 
   await updateDoc(ref, data);
@@ -162,6 +154,39 @@ export async function listPointages(take = 200): Promise<Array<PointageDoc & { i
   const q = query(collection(db, "pointages"), orderBy("createdAt", "desc"), limit(take));
   const snaps = await getDocs(q);
   return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as PointageDoc) }));
+}
+
+export async function listPendingJoinRequests(take = 50): Promise<Array<DemandeAdhesionDoc & { id: string }>> {
+  const db = requireDb();
+  const q = query(
+    collection(db, "demandes_acces"),
+    where("statut", "==", "en_attente"),
+    orderBy("date_demande", "desc"),
+    limit(take),
+  );
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as DemandeAdhesionDoc) }));
+}
+
+export async function listJoinRequests(take = 100): Promise<Array<DemandeAdhesionDoc & { id: string }>> {
+  const db = requireDb();
+  const q = query(collection(db, "demandes_acces"), orderBy("date_demande", "desc"), limit(take));
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as DemandeAdhesionDoc) }));
+}
+
+export async function updateJoinRequestStatut(
+  requestId: string,
+  statut: DemandeAdhesionStatut,
+  extra?: { processedBy?: string; userId?: string },
+): Promise<void> {
+  const db = requireDb();
+  await updateDoc(doc(db, "demandes_acces", requestId), {
+    statut,
+    date_traitement: serverTimestamp(),
+    ...(extra?.processedBy ? { traite_par: extra.processedBy } : {}),
+    ...(extra?.userId ? { userId: extra.userId } : {}),
+  });
 }
 
 export async function requestConge(docData: Omit<CongeDoc, "createdAt" | "statut">): Promise<string> {

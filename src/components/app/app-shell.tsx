@@ -172,7 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main className={cn("mx-auto max-w-6xl px-4 py-6", pathname === "/pointage" && "max-w-lg py-4")}>{children}</main>
     </div>
   );
 }
