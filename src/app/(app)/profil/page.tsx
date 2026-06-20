@@ -137,10 +137,10 @@ export default function ProfilPage() {
   const readonlyEmail = useMemo(() => Boolean(user?.email), [user?.email]);
 
   async function onSubmit(values: FormValues) {
-    if (!uid) return;
+    if (!uid || !user) return;
     setSaving(true);
     try {
-      const email = user.email ?? values.email.trim();
+      const email = user?.email ?? values.email.trim();
       if (!email) {
         toast.error("Email introuvable pour enregistrer le profil");
         return;

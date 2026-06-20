@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
+import { cert, getApps, initializeApp, type App, type ServiceAccount } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
@@ -87,7 +87,7 @@ function initAdminApp(): App {
   const serviceAccount = loadServiceAccount();
 
   return initializeApp({
-    credential: cert(serviceAccount),
+    credential: cert(serviceAccount as ServiceAccount),
     projectId: serviceAccount.project_id,
     // Realtime Database — optionnel, uniquement si vous l'utilisez plus tard
     ...(process.env.FIREBASE_DATABASE_URL?.trim()

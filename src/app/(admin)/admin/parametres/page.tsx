@@ -12,16 +12,18 @@ import { toast } from "sonner";
 import { apiErrorMessage, getParametresEntreprise, updateParametresEntreprise } from "@/lib/user-management";
 
 const schema = z.object({
-  latitude: z.coerce.number(),
-  longitude: z.coerce.number(),
-  rayon_metres: z.coerce.number().positive(),
+  latitude: z.number(),
+  longitude: z.number(),
+  rayon_metres: z.number().positive(),
 });
+
+type FormValues = z.infer<typeof schema>;
 
 export default function AdminParametresPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const form = useForm<z.infer<typeof schema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { latitude: 0, longitude: 0, rayon_metres: 100 },
   });
@@ -46,7 +48,7 @@ export default function AdminParametresPage() {
     })();
   }, [form]);
 
-  async function onSubmit(values: z.infer<typeof schema>) {
+  async function onSubmit(values: FormValues) {
     setSaving(true);
     try {
       await updateParametresEntreprise(values);
@@ -83,7 +85,15 @@ export default function AdminParametresPage() {
                   <FormItem>
                     <FormLabel>Latitude</FormLabel>
                     <FormControl>
-                      <Input type="number" step="any" {...field} />
+                      <Input
+                        type="number"
+                        step="any"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -96,7 +106,15 @@ export default function AdminParametresPage() {
                   <FormItem>
                     <FormLabel>Longitude</FormLabel>
                     <FormControl>
-                      <Input type="number" step="any" {...field} />
+                      <Input
+                        type="number"
+                        step="any"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -109,7 +127,15 @@ export default function AdminParametresPage() {
                   <FormItem>
                     <FormLabel>Rayon (mètres)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="1" {...field} />
+                      <Input
+                        type="number"
+                        step="1"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
