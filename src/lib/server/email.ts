@@ -93,3 +93,51 @@ export async function sendAccessRefusedEmail(params: { to: string; nom: string }
     `,
   });
 }
+
+export async function sendJoinRequestAdminNotification(params: {
+  adminEmails: string[];
+  demandeId: string;
+  nom: string;
+  email: string;
+  telephone?: string;
+  message?: string;
+}): Promise<void> {
+  const recipients = [...new Set(params.adminEmails.map((e) => e.trim()).filter(Boolean))];
+  if (!recipients.length) {
+    console.warn("[email] Aucun destinataire admin — configurez ADMIN_NOTIFY_EMAIL ou un compte admin dans Firestore");
+    return;
+  }
+
+  const adminUrl = `${getAppUrl()}/admin/demandes`;
+  const telLine = params.telephone ? `Téléphone : ${params.telephone}` : "";
+  const msgLine = params.message ? `Message : ${params.message}` : "";
+
+  await sendMail({
+    to: recipients.join(", "),
+    subject: `TimeTrack Pro — Nouvelle demande d'accès : ${params.nom}`,
+    text: [
+      "Une nouvelle demande pour rejoindre TimeTrack Pro vient d'être soumise.",
+      "",
+      `Nom : ${params.nom}`,
+      `Email : ${params.email}`,
+      telLine,
+      msgLine,
+      `Référence : ${params.demandeId}`,
+      "",
+      `Traiter la demande : ${adminUrl}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    html: `
+      <p>Une nouvelle demande pour rejoindre <strong>TimeTrack Pro</strong> vient d'être soumise.</p>
+      <ul>
+        <li><strong>Nom :</strong> ${params.nom}</li>
+        <li><strong>Email :</strong> ${params.email}</li>
+        ${params.telephone ? `<li><strong>Téléphone :</strong> ${params.telephone}</li>` : ""}
+        ${params.message ? `<li><strong>Message :</strong> ${params.message}</li>` : ""}
+        <li><strong>Référence :</strong> ${params.demandeId}</li>
+      </ul>
+      <p><a href="${adminUrl}">Ouvrir le panneau admin — Demandes d'accès</a></p>
+    `,
+  });
+}

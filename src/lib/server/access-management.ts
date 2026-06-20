@@ -7,10 +7,27 @@ import {
   normalizeEmail,
 } from "@/lib/server/api-auth";
 import { generateTempPassword } from "@/lib/server/password";
-import { sendAccessApprovedEmail, sendAccessRefusedEmail } from "@/lib/server/email";
+import { sendAccessApprovedEmail, sendAccessRefusedEmail, sendJoinRequestAdminNotification } from "@/lib/server/email";
 import type { DemandeAccesDoc, UserDoc } from "@/lib/data-model";
 
 const COLLECTION = "demandes_acces";
+
+async function resolveAdminNotifyEmails(): Promise<string[]> {
+  const fromEnv = (process.env.ADMIN_NOTIFY_EMAIL ?? "")
+    .split(",")
+    .map((e) => normalizeEmail(e.trim()))
+    .filter((e) => e && isValidEmail(e));
+
+  if (fromEnv.length) return [...new Set(fromEnv)];
+
+  const snap = await getAdminDb().collection("users").where("role", "==", "admin").limit(20).get();
+  const emails = snap.docs
+    .map((d) => (d.data() as UserDoc).email)
+    .filter((e): e is string => typeof e === "string" && isValidEmail(e))
+    .map(normalizeEmail);
+
+  return [...new Set(emails)];
+}
 
 async function emailAlreadyRegistered(email: string): Promise<boolean> {
   const normalized = normalizeEmail(email);
@@ -116,6 +133,21 @@ export async function createDemandeAcces(input: {
   if (message) docData.message = message;
 
   const ref = await getAdminDb().collection(COLLECTION).add(docData);
+
+  try {
+    const adminEmails = await resolveAdminNotifyEmails();
+    await sendJoinRequestAdminNotification({
+      adminEmails,
+      demandeId: ref.id,
+      nom,
+      email,
+      telephone: telephone || undefined,
+      message: message || undefined,
+    });
+  } catch (err) {
+    console.error("[email] Notification admin demande d'accès:", err);
+  }
+
   return { id: ref.id };
 }
 
