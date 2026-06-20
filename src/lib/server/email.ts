@@ -8,16 +8,44 @@ type MailPayload = {
   html: string;
 };
 
+function resendConfigured(): boolean {
+  return Boolean(process.env.RESEND_API_KEY?.trim());
+}
+
 function smtpConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
-async function sendMail(payload: MailPayload): Promise<void> {
-  if (!smtpConfigured()) {
-    console.info("[email:simulation]", payload.to, payload.subject, payload.text);
-    return;
-  }
+function parseRecipients(to: string): string[] {
+  return [...new Set(to.split(",").map((e) => e.trim()).filter(Boolean))];
+}
 
+async function sendViaResend(payload: MailPayload): Promise<void> {
+  const from = process.env.EMAIL_FROM?.trim() || "TimeTrack Pro <onboarding@resend.dev>";
+  const to = parseRecipients(payload.to);
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject: payload.subject,
+      text: payload.text,
+      html: payload.html,
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Resend: envoi impossible (${res.status})${detail ? ` — ${detail}` : ""}`);
+  }
+}
+
+async function sendViaSmtp(payload: MailPayload): Promise<void> {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT ?? 587),
@@ -35,6 +63,30 @@ async function sendMail(payload: MailPayload): Promise<void> {
     text: payload.text,
     html: payload.html,
   });
+}
+
+async function sendMail(payload: MailPayload): Promise<void> {
+  if (resendConfigured()) {
+    await sendViaResend(payload);
+    return;
+  }
+
+  if (smtpConfigured()) {
+    try {
+      await sendViaSmtp(payload);
+      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("SmtpClientAuthentication is disabled") || msg.includes("535 5.7.139")) {
+        throw new Error(
+          "SMTP Outlook bloqué par Microsoft sur les comptes récents. Configurez RESEND_API_KEY (gratuit sur resend.com).",
+        );
+      }
+      throw err;
+    }
+  }
+
+  console.info("[email:simulation]", payload.to, payload.subject, payload.text);
 }
 
 export async function sendAccessApprovedEmail(params: {

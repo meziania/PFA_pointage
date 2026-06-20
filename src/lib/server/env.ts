@@ -28,8 +28,9 @@ export function getServerEnvStatus(): ServerEnvStatus {
       (process.env.ORG_RADIUS_M ?? process.env.NEXT_PUBLIC_ORG_RADIUS_M)?.trim(),
   );
 
-  const smtp = Boolean(process.env.SMTP_HOST?.trim() && process.env.SMTP_USER?.trim());
-  if (!smtp) warnings.push("SMTP non configuré — les emails seront journalisés en console");
+  const smtp = Boolean(process.env.SMTP_HOST?.trim() && process.env.SMTP_USER?.trim() && process.env.SMTP_PASS?.trim());
+  const resend = Boolean(process.env.RESEND_API_KEY?.trim());
+  if (!smtp && !resend) warnings.push("Email non configuré — ajoutez RESEND_API_KEY (recommandé) ou SMTP");
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim() || "http://localhost:3000";
@@ -39,7 +40,7 @@ export function getServerEnvStatus(): ServerEnvStatus {
     firebaseAdmin,
     qrSecret,
     geofenceFallback,
-    smtp,
+    smtp: smtp || resend,
     appUrl,
     warnings,
   };
