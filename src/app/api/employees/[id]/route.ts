@@ -29,3 +29,15 @@ export async function PUT(request: Request, context: RouteContext) {
     return apiErrorResponse(error);
   }
 }
+
+export async function DELETE(request: Request, context: RouteContext) {
+  try {
+    const { supprimerEmploye } = await import("@/lib/server/access-management");
+    const { uid } = await requireAdmin(request);
+    const { id } = await context.params;
+    await supprimerEmploye({ userId: id, adminUid: uid });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return apiErrorResponse(error);
+  }
+}

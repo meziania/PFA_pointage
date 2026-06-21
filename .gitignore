@@ -38,6 +38,8 @@ yarn-error.log*
 serviceAccountKey.json
 secrets/
 *-firebase-adminsdk-*.json
+systempointage-88b6e-*.json
+.firebase-key.tmp
 
 # Firebase functions build output
 functions/lib/

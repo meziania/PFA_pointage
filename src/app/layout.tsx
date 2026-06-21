@@ -32,10 +32,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#0f6e56" },
-    { media: "(prefers-color-scheme: dark)", color: "#04342c" },
-  ],
+  themeColor: "#0f6e56",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -44,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" className="light">
       <body suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} min-h-dvh`}>
         <AppProviders>{children}</AppProviders>
       </body>

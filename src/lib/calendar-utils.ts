@@ -190,13 +190,13 @@ export function eventKindLabel(kind: CalendarEventKind): string {
 export function eventKindClass(kind: CalendarEventKind): string {
   switch (kind) {
     case "ferie":
-      return "bg-violet-500/25 text-violet-900 dark:text-violet-100 border-violet-500/40";
+      return "bg-violet-500/25 text-violet-900 border-violet-500/40";
     case "maladie":
-      return "bg-rose-500/20 text-rose-900 dark:text-rose-100 border-rose-500/35";
+      return "bg-rose-500/20 text-rose-900 border-rose-500/35";
     case "exceptionnel":
-      return "bg-sky-500/20 text-sky-900 dark:text-sky-100 border-sky-500/35";
+      return "bg-sky-500/20 text-sky-900 border-sky-500/35";
     case "en_attente":
-      return "bg-amber-500/25 text-amber-950 dark:text-amber-100 border-amber-500/40";
+      return "bg-amber-500/25 text-amber-950 border-amber-500/40";
     default:
       return "bg-[color-mix(in_oklch,var(--success)_22%,transparent)] text-foreground border-[color-mix(in_oklch,var(--success)_40%,transparent)]";
   }

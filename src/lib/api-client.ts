@@ -25,10 +25,24 @@ export async function apiFetch<T>(
   }
 
   const res = await fetch(path, { ...init, headers });
-  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+  const contentType = res.headers.get("content-type") ?? "";
+  const data = contentType.includes("application/json")
+    ? ((await res.json().catch(() => ({}))) as T & { error?: string })
+    : ({} as T & { error?: string });
 
   if (!res.ok) {
-    throw new Error(data.error ?? `Erreur HTTP ${res.status}`);
+    if (data.error) throw new Error(data.error);
+    if (res.status === 503) {
+      throw new Error(
+        "Configuration serveur incomplète. Ajoutez serviceAccountKey.json (local) ou FIREBASE_SERVICE_ACCOUNT_KEY (Vercel).",
+      );
+    }
+    if (!contentType.includes("application/json")) {
+      throw new Error(
+        `Erreur serveur (${res.status}). Vérifiez FIREBASE_SERVICE_ACCOUNT_KEY sur Vercel et redéployez.`,
+      );
+    }
+    throw new Error(`Erreur HTTP ${res.status}`);
   }
 
   return data;

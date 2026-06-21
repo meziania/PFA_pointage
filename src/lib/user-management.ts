@@ -21,14 +21,22 @@ export async function listDemandesAcces(params?: { statut?: "en_attente" | "appr
 }
 
 export async function approuverDemandeAcces(requestId: string) {
-  return apiFetch<{ statut: string; uid: string; email: string; temporaryPassword: string }>(
-    `/api/demandes-acces/${requestId}/approuver`,
-    { method: "PUT" },
-  );
+  return apiFetch<{
+    statut: string;
+    uid: string;
+    email: string;
+    temporaryPassword: string;
+    emailSent: boolean;
+    loginUrl: string;
+  }>(`/api/demandes-acces/${requestId}/approuver`, { method: "PUT" });
 }
 
 export async function refuserDemandeAcces(requestId: string) {
   return apiFetch<{ statut: string }>(`/api/demandes-acces/${requestId}/refuser`, { method: "PUT" });
+}
+
+export async function supprimerDemandeAcces(requestId: string) {
+  return apiFetch<{ ok: boolean }>(`/api/demandes-acces/${requestId}`, { method: "DELETE" });
 }
 
 export async function createEmployeeAccount(params: {
@@ -54,6 +62,10 @@ export async function reactiverEmploye(userId: string) {
   return apiFetch<{ statut: string }>(`/api/employees/${userId}/reactiver`, { method: "PUT" });
 }
 
+export async function supprimerEmploye(userId: string) {
+  return apiFetch<{ ok: boolean }>(`/api/employees/${userId}`, { method: "DELETE" });
+}
+
 export async function updateEmploye(
   userId: string,
   patch: {
@@ -73,6 +85,12 @@ export async function updateEmploye(
     method: "PUT",
     body: JSON.stringify(patch),
   });
+}
+
+export async function getGeofenceZone() {
+  return apiFetch<{
+    geofence: { latitude: number; longitude: number; rayon_metres: number } | null;
+  }>("/api/geofence");
 }
 
 export async function getParametresEntreprise() {

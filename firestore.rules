@@ -119,6 +119,8 @@ service cloud.firestore {
         && request.resource.data.title == resource.data.title
         && request.resource.data.body == resource.data.body
         && request.resource.data.createdAt == resource.data.createdAt
+        && (!("type" in resource.data) || request.resource.data.type == resource.data.type)
+        && (!("actionHref" in resource.data) || request.resource.data.actionHref == resource.data.actionHref)
         && (!("qrLink" in resource.data) || request.resource.data.qrLink == resource.data.qrLink);
       allow delete: if false;
     }

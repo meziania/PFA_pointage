@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ApiError, apiErrorResponse, requireAdmin } from "@/lib/server/api-auth";
-import { createDemandeAcces, listDemandesAcces } from "@/lib/server/access-management";
+import { ApiError, apiErrorResponse } from "@/lib/server/api-errors";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const createSchema = z.object({
   nom: z.string().min(2),
@@ -13,6 +15,10 @@ const createSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const { assertAdminConfigured } = await import("@/lib/server/firebase-admin");
+    const { createDemandeAcces } = await import("@/lib/server/access-management");
+
+    assertAdminConfigured();
     const ip = getClientIp(request);
     if (!checkRateLimit(`demandes-acces:${ip}`, 5, 60 * 60 * 1000)) {
       throw ApiError.badRequest("Trop de demandes. Réessayez plus tard.");
@@ -27,7 +33,10 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const { requireAdmin } = await import("@/lib/server/api-auth");
     await requireAdmin(request);
+
+    const { listDemandesAcces } = await import("@/lib/server/access-management");
     const url = new URL(request.url);
     const statut = url.searchParams.get("statut");
     const rows = await listDemandesAcces(

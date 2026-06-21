@@ -70,6 +70,8 @@ export type NotificationDoc = {
   userId: string;
   title: string;
   body: string;
+  type?: "profile_required" | "qr" | "general";
+  actionHref?: string;
   qrLink?: string;
   read: boolean;
   createdAt?: unknown;

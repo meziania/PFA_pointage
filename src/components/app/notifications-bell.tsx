@@ -189,7 +189,7 @@ export function NotificationsBell() {
                 <div className="rounded-xl border bg-background/60 p-4 text-sm">
                   <div className="font-medium">Aucune notification</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Quand l’admin génère un nouveau QR, tu le verras ici.
+                    Les alertes importantes (profil obligatoire, QR…) apparaîtront ici.
                   </div>
                 </div>
               </div>
@@ -202,9 +202,11 @@ export function NotificationsBell() {
                     typeof n.qrLink === "string" && n.qrLink.trim()
                       ? n.qrLink.trim()
                       : extractFirstUrl(n.body ?? "");
+                  const actionHref = typeof n.actionHref === "string" && n.actionHref.trim() ? n.actionHref.trim() : null;
+                  const isProfileNotif = n.type === "profile_required";
                   const isUnread = n.read === false;
                   const cleaned = stripUrls(n.body ?? "");
-                  const safeBody = cleaned || "Un nouveau QR de pointage est disponible.";
+                  const safeBody = cleaned || (isProfileNotif ? "Complétez votre profil employé." : "Un nouveau QR de pointage est disponible.");
                   return (
                     <div
                       key={n.id}
@@ -249,6 +251,18 @@ export function NotificationsBell() {
                           >
                             Télécharger QR
                           </button>
+                        </div>
+                      ) : null}
+
+                      {actionHref && isProfileNotif ? (
+                        <div className="mt-2">
+                          <a
+                            href={actionHref}
+                            className="inline-flex rounded-md border bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
+                            onClick={() => setOpen(false)}
+                          >
+                            Compléter mon profil
+                          </a>
                         </div>
                       ) : null}
                     </div>

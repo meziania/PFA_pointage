@@ -92,6 +92,21 @@ export async function getCurrentDynamicQrPayload(nowMs = Date.now()) {
   const window = getQrWindowInfo(nowMs);
   const token = generateDynamicQrToken(secret, window.counter);
   const qrLink = `${getAppUrl()}/pointage?token=${encodeURIComponent(token)}`;
+
+  await getAdminDb()
+    .collection("settings")
+    .doc("pointage")
+    .set(
+      {
+        qrMode: "dynamic",
+        qrCurrentCounter: window.counter,
+        qrCurrentTokenHash: sha256Hex(token),
+        qrWindowEndsAt: new Date(window.endsAtMs),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
   return {
     mode: "dynamic" as const,
     token,

@@ -169,7 +169,7 @@ export default function AdminCongesPage() {
 
       {tab === "validation" ? (
         <>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             <div className="admin-kpi">
               <div className="text-xs text-muted-foreground">En attente</div>
               <div className="mt-1 font-heading text-2xl tabular-data text-status-pending-text">{stats.pending}</div>
@@ -210,7 +210,50 @@ export default function AdminCongesPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="space-y-3 md:hidden">
+                {tableRows.map((r) => {
+                  const u = usersById[r.userId];
+                  const displayName = u?.nom || u?.email || "Employé";
+                  return (
+                    <div key={r.id} className="mobile-data-card">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-brand-dark">{displayName}</div>
+                          {u?.email ? <div className="truncate text-xs text-muted-foreground">{u.email}</div> : null}
+                        </div>
+                        <StatusBadge variant={congeStatutVariant(r.statut)}>
+                          {r.statut === "valide" ? "Validé" : r.statut === "refuse" ? "Refusé" : "En attente"}
+                        </StatusBadge>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span>{r.dateDebut} → {r.dateFin}</span>
+                        <span className="rounded-full border bg-background px-2 py-0.5 font-medium text-foreground">
+                          {typeLabel(r.type)}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button size="sm" className="flex-1 sm:flex-none" disabled={updatingId === r.id} onClick={() => setStatut(r.id, "valide")}>
+                          Valider
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 sm:flex-none"
+                          disabled={updatingId === r.id}
+                          onClick={() => setStatut(r.id, "refuse")}
+                        >
+                          Refuser
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {!loading && tableRows.length === 0 ? (
+                  <p className="py-6 text-center text-muted-foreground">Aucune demande dans cette vue.</p>
+                ) : null}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-sm">
                   <thead className="text-left text-muted-foreground">
                     <tr className="border-b">

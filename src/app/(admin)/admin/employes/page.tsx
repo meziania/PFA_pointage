@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 import type { UserDoc } from "@/lib/data-model";
-import { apiErrorMessage, createEmployeeAccount, desactiverEmploye, reactiverEmploye, updateEmploye } from "@/lib/user-management";
+import { apiErrorMessage, createEmployeeAccount, desactiverEmploye, reactiverEmploye, supprimerEmploye, updateEmploye } from "@/lib/user-management";
 import { StatusBadge, employeStatutVariant } from "@/components/ui/status-badge";
 
 type Row = UserDoc & { id: string };
@@ -84,6 +84,7 @@ export default function AdminEmployesPage() {
   const [creating, setCreating] = useState(false);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Row | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
@@ -217,6 +218,26 @@ export default function AdminEmployesPage() {
       dateNaissance: employee.dateNaissance ?? "",
       dateEmbauche: employee.dateEmbauche ?? "",
     });
+  }
+
+  async function deleteEmployee(userId: string, nom: string) {
+    if (
+      !window.confirm(
+        `Supprimer définitivement ${nom} ? Le compte de connexion sera supprimé. L'historique de pointage sera conservé.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(userId);
+    try {
+      await supprimerEmploye(userId);
+      toast.success("Employé supprimé — historique de pointage conservé");
+      if (editingEmployee?.id === userId) setEditingEmployee(null);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "Impossible de supprimer l'employé."));
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function onSaveEdit(values: z.infer<typeof editSchema>) {
@@ -553,6 +574,14 @@ export default function AdminEmployesPage() {
                       Réactiver
                     </Button>
                   )}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={deletingId === editingEmployee.id}
+                    onClick={() => deleteEmployee(editingEmployee.id, editingEmployee.nom)}
+                  >
+                    Supprimer
+                  </Button>
                 </div>
               </form>
             </Form>
@@ -618,7 +647,85 @@ export default function AdminEmployesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 md:hidden">
+            {filtered.map((r) => {
+              const p = profileCompleteness(r);
+              const ok = p.score >= 60;
+              return (
+                <div key={r.id} className="mobile-data-card">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-brand-dark">{r.nom}</div>
+                      <div className="truncate text-xs text-muted-foreground">{r.email}</div>
+                    </div>
+                    <StatusBadge variant={employeStatutVariant(r.statut)}>
+                      {(r.statut ?? "actif") === "actif" ? "Actif" : "Désactivé"}
+                    </StatusBadge>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span>Matricule: {r.matricule ?? "—"}</span>
+                    <span>Dép.: {r.departement ?? "—"}</span>
+                    <span>Poste: {r.poste ?? "—"}</span>
+                    <span
+                      className={
+                        ok
+                          ? "font-medium text-status-approved-text"
+                          : "font-medium text-status-pending-text"
+                      }
+                    >
+                      Profil {p.label}
+                    </span>
+                  </div>
+                  {r.role === "employe" ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => startEdit(r)}>
+                        Modifier
+                      </Button>
+                      {(r.statut ?? "actif") === "actif" ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 sm:flex-none"
+                          disabled={deactivatingId === r.id}
+                          onClick={() => deactivateEmployee(r.id)}
+                        >
+                          Désactiver
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="flex-1 sm:flex-none"
+                          disabled={reactivatingId === r.id}
+                          onClick={() => reactivateEmployee(r.id)}
+                        >
+                          Réactiver
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="w-full sm:w-auto"
+                        disabled={deletingId === r.id}
+                        onClick={() => deleteEmployee(r.id, r.nom)}
+                      >
+                        Supprimer
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">Compte administrateur</p>
+                  )}
+                </div>
+              );
+            })}
+            {!loading && filtered.length === 0 ? (
+              <p className="py-6 text-center text-muted-foreground">Aucun résultat.</p>
+            ) : null}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead className="text-left text-muted-foreground">
                 <tr className="border-b">
@@ -688,6 +795,15 @@ export default function AdminEmployesPage() {
                               Réactiver
                             </Button>
                           )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            disabled={deletingId === r.id}
+                            onClick={() => deleteEmployee(r.id, r.nom)}
+                          >
+                            Supprimer
+                          </Button>
                         </div>
                       ) : (
                         <div className="text-right text-xs text-muted-foreground">—</div>

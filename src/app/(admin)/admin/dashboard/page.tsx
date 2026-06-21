@@ -226,7 +226,7 @@ export default function AdminDashboardPage() {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {kpis.map((k) => (
           <div key={k.label} className="admin-kpi">
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{k.label}</div>
@@ -363,7 +363,21 @@ export default function AdminDashboardPage() {
             <CardDescription className="text-xs">{`${filtered.length} ligne(s)`}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="max-h-[380px] overflow-auto">
+            <div className="space-y-3 md:hidden">
+              {filtered.map((r) => (
+                <div key={r.id} className="mobile-data-card">
+                  <div>{renderUserCell(r.userId)}</div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>{r.date} · {r.heure}</span>
+                    <span className="font-medium text-foreground">{formatPointageType(r.type)}</span>
+                  </div>
+                </div>
+              ))}
+              {!loading && filtered.length === 0 ? (
+                <p className="py-6 text-center text-muted-foreground">Aucune donnée pour ces filtres.</p>
+              ) : null}
+            </div>
+            <div className="hidden max-h-[380px] overflow-auto md:block">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-card text-left text-xs text-muted-foreground">
                   <tr className="border-b">
@@ -401,7 +415,22 @@ export default function AdminDashboardPage() {
             <CardDescription className="text-xs">Retards, absences, &lt; 8 h</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="max-h-[380px] overflow-auto">
+            <div className="space-y-3 md:hidden">
+              {anomalies.map((a) => (
+                <div key={`${a.key}|${a.kind}`} className="mobile-data-card">
+                  <div>{renderUserCell(a.userId)}</div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-brand-dark">{a.kind}</span>
+                    <span className="text-muted-foreground">{a.date}</span>
+                  </div>
+                  {a.details ? <p className="mt-1 text-xs text-muted-foreground">{a.details}</p> : null}
+                </div>
+              ))}
+              {!loading && anomalies.length === 0 ? (
+                <p className="py-6 text-center text-muted-foreground">Aucune anomalie détectée.</p>
+              ) : null}
+            </div>
+            <div className="hidden max-h-[380px] overflow-auto md:block">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-card text-left text-xs text-muted-foreground">
                   <tr className="border-b">

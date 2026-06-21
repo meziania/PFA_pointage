@@ -1,13 +1,15 @@
 import { FieldValue } from "firebase-admin/firestore";
-import { getAdminAuth, getAdminDb } from "@/lib/server/firebase-admin";
 import {
   ApiError,
-  getUserDocAdmin,
+  getAppUrl,
   isValidEmail,
   normalizeEmail,
-} from "@/lib/server/api-auth";
+} from "@/lib/server/api-errors";
+import { getUserDocAdmin } from "@/lib/server/api-auth";
+import { getAdminAuth, getAdminDb } from "@/lib/server/firebase-admin";
 import { generateTempPassword } from "@/lib/server/password";
 import { sendAccessApprovedEmail, sendAccessRefusedEmail, sendJoinRequestAdminNotification } from "@/lib/server/email";
+import { createProfileRequiredNotification } from "@/lib/server/notifications";
 import type { DemandeAccesDoc, UserDoc } from "@/lib/data-model";
 
 const COLLECTION = "demandes_acces";
@@ -91,6 +93,13 @@ export async function createEmployeAccount(params: {
   }
 
   await getAdminDb().collection("users").doc(userRecord.uid).set(userDoc);
+
+  try {
+    await createProfileRequiredNotification({ userId: userRecord.uid, nom });
+  } catch (err) {
+    console.error("[notification] Profil obligatoire:", err);
+  }
+
   return { uid: userRecord.uid, email };
 }
 
@@ -168,7 +177,7 @@ export async function listDemandesAcces(options?: { statut?: DemandeAccesDoc["st
 export async function approuverDemandeAcces(params: {
   demandeId: string;
   adminUid: string;
-}): Promise<{ uid: string; email: string; temporaryPassword: string }> {
+}): Promise<{ uid: string; email: string; temporaryPassword: string; emailSent: boolean; loginUrl: string }> {
   const ref = getAdminDb().collection(COLLECTION).doc(params.demandeId);
   const snap = await ref.get();
   if (!snap.exists) throw ApiError.notFound("Demande introuvable");
@@ -188,21 +197,30 @@ export async function approuverDemandeAcces(params: {
     doit_changer_mdp: true,
   });
 
+  const loginUrl = `${getAppUrl()}/login`;
+
   await ref.update({
     statut: "approuvee",
     date_traitement: FieldValue.serverTimestamp(),
     traite_par: params.adminUid,
     userId: created.uid,
+    loginEmail: created.email,
   });
 
-  await sendAccessApprovedEmail({
-    to: demande.email,
-    nom: demande.nom,
-    email: created.email,
-    temporaryPassword,
-  });
+  let emailSent = false;
+  try {
+    await sendAccessApprovedEmail({
+      to: demande.email,
+      nom: demande.nom,
+      email: created.email,
+      temporaryPassword,
+    });
+    emailSent = true;
+  } catch (err) {
+    console.error("[email] Notification approbation demande d'accès:", err);
+  }
 
-  return { ...created, temporaryPassword };
+  return { ...created, temporaryPassword, emailSent, loginUrl };
 }
 
 export async function refuserDemandeAcces(params: { demandeId: string; adminUid: string }): Promise<void> {
@@ -221,7 +239,11 @@ export async function refuserDemandeAcces(params: { demandeId: string; adminUid:
     traite_par: params.adminUid,
   });
 
-  await sendAccessRefusedEmail({ to: demande.email, nom: demande.nom });
+  try {
+    await sendAccessRefusedEmail({ to: demande.email, nom: demande.nom });
+  } catch (err) {
+    console.error("[email] Notification refus demande d'accès:", err);
+  }
 }
 
 export async function desactiverEmploye(params: { userId: string; adminUid: string }): Promise<void> {
@@ -347,4 +369,27 @@ export async function assertUserCanLogin(uid: string): Promise<UserDoc & { id: s
     throw ApiError.forbidden("Compte désactivé. Contactez l'administrateur.");
   }
   return user;
+}
+
+export async function supprimerDemandeAcces(params: { demandeId: string; adminUid: string }): Promise<void> {
+  const ref = getAdminDb().collection(COLLECTION).doc(params.demandeId);
+  const snap = await ref.get();
+  if (!snap.exists) throw ApiError.notFound("Demande introuvable");
+  await ref.delete();
+}
+
+export async function supprimerEmploye(params: { userId: string; adminUid: string }): Promise<void> {
+  const user = await getUserDocAdmin(params.userId);
+  if (!user) throw ApiError.notFound("Employé introuvable");
+  if (user.role !== "employe") throw ApiError.badRequest("Seuls les comptes employé peuvent être supprimés");
+  if (params.userId === params.adminUid) throw ApiError.badRequest("Vous ne pouvez pas supprimer votre propre compte");
+
+  try {
+    await getAdminAuth().deleteUser(params.userId);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "auth/user-not-found") throw err;
+  }
+
+  await getAdminDb().collection("users").doc(params.userId).delete();
 }

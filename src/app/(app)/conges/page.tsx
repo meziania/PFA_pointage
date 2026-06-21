@@ -178,10 +178,10 @@ export default function CongesPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Congés & absences</h1>
-        <p className="mt-1 text-muted-foreground">
+        <h1 className="page-title">Congés & absences</h1>
+        <p className="page-subtitle mt-1">
           Calendrier (fériés, maladie, congés), nouvelle demande et suivi — une seule page, données synchronisées.
         </p>
       </div>
@@ -311,7 +311,7 @@ export default function CongesPage() {
       {tab === "historique" ? (
         <Card>
           <CardHeader>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
                 <CardTitle>Mes demandes</CardTitle>
                 <CardDescription>{loading ? "Chargement..." : `${sorted.length} demande(s)`}</CardDescription>
@@ -319,6 +319,7 @@ export default function CongesPage() {
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => toast.message("Export PDF", { description: "À brancher: impression (window.print) ou génération PDF." })}
               >
                 Exporter PDF

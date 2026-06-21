@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+
 export type ServerEnvStatus = {
   firebaseClient: boolean;
   firebaseAdmin: boolean;
@@ -8,16 +11,33 @@ export type ServerEnvStatus = {
   warnings: string[];
 };
 
+function detectAdminCredentials(): boolean {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY?.trim()) return true;
+  if (
+    process.env.FIREBASE_CLIENT_EMAIL?.trim() &&
+    process.env.FIREBASE_PRIVATE_KEY?.trim() &&
+    (process.env.FIREBASE_PROJECT_ID?.trim() || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim())
+  ) {
+    return true;
+  }
+  if (process.env.VERCEL) return false;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim()) return true;
+  return (
+    existsSync(resolve(process.cwd(), "serviceAccountKey.json")) ||
+    existsSync(resolve(process.cwd(), "secrets", "serviceAccountKey.json"))
+  );
+}
+
 export function getServerEnvStatus(): ServerEnvStatus {
   const warnings: string[] = [];
 
   const firebaseClient = Boolean(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim());
   if (!firebaseClient) warnings.push("NEXT_PUBLIC_FIREBASE_PROJECT_ID manquant — client Firebase indisponible");
 
-  const firebaseAdmin = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_KEY?.trim());
+  const firebaseAdmin = detectAdminCredentials();
   if (!firebaseAdmin) {
     warnings.push(
-      "FIREBASE_SERVICE_ACCOUNT_KEY manquant — les routes API (verifyIdToken) échoueront hors environnement GCP",
+      "Firebase Admin manquant — serviceAccountKey.json (local) ou FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY (Vercel)",
     );
   }
 

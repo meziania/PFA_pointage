@@ -6,15 +6,15 @@ export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function PUT(request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
     const { requireAdmin } = await import("@/lib/server/api-auth");
-    const { refuserDemandeAcces } = await import("@/lib/server/access-management");
+    const { supprimerDemandeAcces } = await import("@/lib/server/access-management");
 
     const { uid } = await requireAdmin(request);
     const { id } = await context.params;
-    await refuserDemandeAcces({ demandeId: id, adminUid: uid });
-    return NextResponse.json({ statut: "refusee" });
+    await supprimerDemandeAcces({ demandeId: id, adminUid: uid });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error);
   }

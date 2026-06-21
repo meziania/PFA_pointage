@@ -9,29 +9,17 @@ import * as z from "zod";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { firebaseMissingConfigMessage } from "@/lib/firebase-missing-message";
 import { getUserDoc, getUserRole } from "@/lib/firestore-helpers";
-import { BrandLogo } from "@/components/brand/brand-logo";
+import { AuthLayout } from "@/components/layout/auth-layout";
 
 const formSchema = z.object({
-  email: z.string().email({
-    message: "Veuillez entrer une adresse email valide.",
-  }),
-  password: z.string().min(1, {
-    message: "Veuillez entrer votre mot de passe.",
-  }),
+  email: z.string().email({ message: "Veuillez entrer une adresse email valide." }),
+  password: z.string().min(1, { message: "Veuillez entrer votre mot de passe." }),
 });
 
 export default function LoginPage() {
@@ -40,10 +28,7 @@ export default function LoginPage() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -104,64 +89,51 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-brand-light/30 px-4">
-      <div className="mb-6">
-        <BrandLogo size="lg" />
-      </div>
-      <Card className="w-full max-w-md border-brand/20 shadow-sm">
-        <CardHeader className="space-y-1">
-          <CardTitle className="font-heading text-2xl text-brand-dark">Connexion</CardTitle>
-          <CardDescription>
-            Saisissez vos identifiants pour accéder à TimeTrack Pro
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="jean@exemple.com" type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mot de passe</FormLabel>
-                    <FormControl>
-                      <Input placeholder="••••••••" type="password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Connexion en cours..." : "Se connecter"}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="text-center text-sm text-muted-foreground">
-            Pas encore de compte ?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Demander à rejoindre
-            </Link>
-          </div>
-          <Button variant="outline" asChild className="w-full">
-            <Link href="/">Retour à l&apos;accueil</Link>
+    <AuthLayout
+      title="Connexion"
+      description="Utilisez les identifiants transmis par votre administrateur RH."
+      footer={
+        <p className="text-center text-sm text-muted-foreground">
+          Pas encore de compte ?{" "}
+          <Link href="/register" className="font-medium text-brand hover:underline">
+            Demander à rejoindre
+          </Link>
+        </p>
+      }
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email professionnel</FormLabel>
+                <FormControl>
+                  <Input placeholder="jean@entreprise.com" type="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Mot de passe</FormLabel>
+                <FormControl>
+                  <Input placeholder="••••••••" type="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Connexion…" : "Se connecter"}
           </Button>
-        </CardFooter>
-      </Card>
-    </div>
+        </form>
+      </Form>
+    </AuthLayout>
   );
 }

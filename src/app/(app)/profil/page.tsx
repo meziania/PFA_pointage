@@ -17,6 +17,12 @@ import { ProfileAvatarUpload } from "@/components/app/profile-avatar-upload";
 import { ensureUserDoc, updateEmployeeProfile } from "@/lib/firestore-helpers";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 import type { UserDoc } from "@/lib/data-model";
+import {
+  PROFILE_FIELD_LABELS,
+  getMissingProfileFields,
+  isProfileComplete,
+  profileCompletionPercent,
+} from "@/lib/profile-completeness";
 
 const profileSchema = z.object({
   nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
@@ -38,6 +44,7 @@ export default function ProfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [userDoc, setUserDoc] = useState<UserDoc | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(profileSchema),
@@ -59,6 +66,7 @@ export default function ProfilPage() {
 
   const applyUserDoc = useCallback(
     (data: UserDoc | null) => {
+      setUserDoc(data);
       if (!data) {
         form.reset({
           nom: user?.displayName ?? "",
@@ -135,6 +143,9 @@ export default function ProfilPage() {
   }, [uid, user?.email, user?.displayName, applyUserDoc]);
 
   const readonlyEmail = useMemo(() => Boolean(user?.email), [user?.email]);
+  const missingFields = useMemo(() => getMissingProfileFields(userDoc ?? {}), [userDoc]);
+  const completionPct = useMemo(() => profileCompletionPercent(userDoc ?? {}), [userDoc]);
+  const profileOk = missingFields.length === 0;
 
   async function onSubmit(values: FormValues) {
     if (!uid || !user) return;
@@ -169,7 +180,24 @@ export default function ProfilPage() {
       }
       await refreshProfilePhoto();
 
-      toast.success("Profil mis à jour");
+      const merged: Partial<UserDoc> = {
+        ...(userDoc ?? {}),
+        nom: values.nom,
+        matricule: values.matricule,
+        telephone: values.telephone,
+        departement: values.departement,
+        poste: values.poste,
+        cin: values.cin,
+        adresse: values.adresse,
+        dateNaissance: values.dateNaissance,
+        dateEmbauche: values.dateEmbauche,
+      };
+
+      if (isProfileComplete(merged)) {
+        toast.success("Profil complet — vous pouvez utiliser l'application");
+      } else {
+        toast.success("Profil enregistré — complétez les champs obligatoires restants");
+      }
     } catch (err) {
       const code = (err as { code?: string })?.code;
       const msg =
@@ -187,11 +215,32 @@ export default function ProfilPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Mon profil</h1>
-        <p className="text-muted-foreground">Complétez vos informations pour faciliter le tri et la gestion côté admin.</p>
+        <h1 className="page-title">Mon profil</h1>
+        <p className="page-subtitle mt-1">
+          La complétion du profil est <strong>obligatoire</strong> après votre première connexion (matricule, téléphone,
+          département, poste, CIN).
+        </p>
       </div>
+
+      {!loading && !profileOk ? (
+        <Card className="border-[color-mix(in_oklch,var(--warning)_35%,var(--border))] bg-[color-mix(in_oklch,var(--warning)_10%,var(--card))]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-brand-dark">Profil incomplet ({completionPct}%)</CardTitle>
+            <CardDescription>
+              Champs obligatoires manquants :{" "}
+              {missingFields.map((f) => PROFILE_FIELD_LABELS[f]).join(", ")}.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
+
+      {!loading && profileOk ? (
+        <Card className="border-[color-mix(in_oklch,var(--success)_35%,var(--border))] bg-[color-mix(in_oklch,var(--success)_8%,var(--card))]">
+          <CardContent className="py-4 text-sm text-brand-dark">Profil complet — accès à toutes les fonctionnalités.</CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

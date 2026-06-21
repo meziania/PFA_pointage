@@ -14,7 +14,7 @@ export function RequireAuth({
   children: React.ReactNode;
   role?: UserRole;
 }) {
-  const { user, role: currentRole, statut, mustChangePassword, loading } = useAuth();
+  const { user, role: currentRole, statut, mustChangePassword, profileComplete, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -37,8 +37,18 @@ export function RequireAuth({
 
     if (mustChangePassword && pathname !== "/changer-mot-de-passe") {
       router.replace("/changer-mot-de-passe");
+      return;
     }
-  }, [loading, user, statut, mustChangePassword, pathname, router]);
+
+    if (
+      currentRole === "employe" &&
+      profileComplete === false &&
+      pathname !== "/profil" &&
+      pathname !== "/changer-mot-de-passe"
+    ) {
+      router.replace("/profil");
+    }
+  }, [loading, user, statut, mustChangePassword, profileComplete, currentRole, pathname, router]);
 
   useEffect(() => {
     if (loading) return;
@@ -52,6 +62,15 @@ export function RequireAuth({
   if (statut && statut !== "actif") return null;
 
   if (mustChangePassword && pathname !== "/changer-mot-de-passe") return null;
+
+  if (
+    currentRole === "employe" &&
+    profileComplete === false &&
+    pathname !== "/profil" &&
+    pathname !== "/changer-mot-de-passe"
+  ) {
+    return null;
+  }
 
   if (role && !currentRole) {
     return (

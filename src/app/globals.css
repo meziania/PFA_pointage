@@ -1,16 +1,15 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 
-  /* Brand palette */
+  /* Brand palette — RH / pointage professionnel */
   --brand: #0f6e56;
   --brand-light: #e1f5ee;
   --brand-dark: #04342c;
+  --brand-muted: #5a8f82;
 
-  --background: #f8faf9;
+  --background: #f4f8f6;
   --foreground: #04342c;
   --card: #ffffff;
   --card-foreground: #04342c;
@@ -58,54 +57,9 @@
   /* Pointage mobile — high contrast zone indicators */
   --zone-ok: #173404;
   --zone-bad: #791f1f;
-}
 
-.dark {
-  --background: #041612;
-  --foreground: #e1f5ee;
-  --card: #07241c;
-  --card-foreground: #e1f5ee;
-  --popover: #07241c;
-  --popover-foreground: #e1f5ee;
-
-  --primary: #2a9d7a;
-  --primary-foreground: #041612;
-
-  --secondary: #0f3d30;
-  --secondary-foreground: #e1f5ee;
-  --muted: #0f3d30;
-  --muted-foreground: #a8c4bc;
-
-  --accent: #0f3d30;
-  --accent-foreground: #e1f5ee;
-
-  --destructive: #c44;
-  --destructive-foreground: #ffffff;
-
-  --border: #1a4d3e;
-  --input: #1a4d3e;
-  --ring: #2a9d7a;
-
-  --success: #2a9d7a;
-  --warning: #d4a017;
-
-  --status-pending-bg: #3d3018;
-  --status-pending-text: #faeeda;
-  --status-approved-bg: #173404;
-  --status-approved-text: #eaf3de;
-  --status-rejected-bg: #4a1515;
-  --status-rejected-text: #fcebeb;
-  --status-inactive-bg: #2a2926;
-  --status-inactive-text: #f1efe8;
-
-  --chart-1: #2a9d7a;
-  --chart-2: #d4a017;
-  --chart-3: #6abf4b;
-  --chart-4: #e05555;
-  --chart-5: #888880;
-
-  --zone-ok: #6abf4b;
-  --zone-bad: #e05555;
+  --shadow-card: 0 1px 2px rgba(4, 52, 44, 0.06), 0 8px 24px rgba(4, 52, 44, 0.06);
+  --shadow-elevated: 0 4px 20px rgba(4, 52, 44, 0.1);
 }
 
 @theme inline {
@@ -168,7 +122,7 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased min-h-dvh font-sans;
+    @apply bg-background text-foreground antialiased min-h-dvh font-sans overflow-x-hidden;
   }
 
   h1,
@@ -185,15 +139,71 @@
 }
 
 @layer utilities {
+  .surface-page {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in oklch, var(--brand) 12%, transparent), transparent),
+      radial-gradient(circle at 100% 0%, color-mix(in oklch, var(--brand-light) 80%, transparent), transparent 40%);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .nav-pill {
+    @apply rounded-lg px-3 py-2 text-sm font-medium transition-colors;
+  }
+
+  .nav-pill-active {
+    @apply bg-brand text-primary-foreground shadow-sm;
+  }
+
+  .nav-pill-idle {
+    @apply text-muted-foreground hover:bg-brand-light/70 hover:text-brand-dark;
+  }
+
   .admin-surface {
-    @apply rounded-md border border-border bg-card;
+    @apply rounded-xl border border-brand/10 bg-card shadow-card;
   }
 
   .admin-kpi {
-    @apply rounded-md border border-brand/15 bg-brand-light/40 p-4;
+    @apply rounded-xl border border-brand/15 bg-gradient-to-br from-brand-light/50 to-card p-4 shadow-card;
   }
 
   .tabular-data {
     font-variant-numeric: tabular-nums;
+  }
+
+  .pb-mobile-nav {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pb-mobile-nav-action {
+    padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .fixed-bottom-action {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  .page-title {
+    @apply font-heading text-xl text-brand-dark sm:text-2xl;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .mobile-data-card {
+    @apply rounded-xl border border-brand/10 bg-background p-3 text-sm shadow-sm;
   }
 }

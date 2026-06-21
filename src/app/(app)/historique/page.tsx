@@ -178,16 +178,17 @@ export default function HistoriquePage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Historique des pointages</h1>
-            <p className="text-muted-foreground">{loading ? "Chargement..." : `${monthRows.length} pointage(s) ce mois`}</p>
+            <h1 className="page-title">Historique des pointages</h1>
+            <p className="page-subtitle">{loading ? "Chargement..." : `${monthRows.length} pointage(s) ce mois`}</p>
           </div>
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => {
               const header = ["date", "heure", "type", "latitude", "longitude"];
               const lines = viewRows.map((r) => [
@@ -206,7 +207,7 @@ export default function HistoriquePage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">Heures ce mois</CardTitle>
@@ -241,8 +242,8 @@ export default function HistoriquePage() {
         </Card>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
           {pills.map((p) => (
             <button
               key={p.key}
@@ -258,10 +259,10 @@ export default function HistoriquePage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <div className="rounded-full border bg-background px-4 py-2 text-sm text-muted-foreground">{monthLabel}</div>
           <input
-            className="h-10 rounded-md border bg-background px-3 text-sm"
+            className="h-11 w-full rounded-md border bg-background px-3 text-sm sm:w-auto touch-target"
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
@@ -286,8 +287,47 @@ export default function HistoriquePage() {
           <CardTitle>Pointages</CardTitle>
           <CardDescription>{loading ? "Chargement..." : `${viewRows.length} ligne(s)`}</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+        <CardContent className="space-y-4">
+          <div className="space-y-3 md:hidden">
+            {viewRows.map((r) => {
+              const isEntree = r.type === "entree";
+              const expectedMin = toMinutes(computed.expectedStart) ?? 510;
+              const m = toMinutes(r.heure);
+              const lateMin = isEntree && m !== null && m > expectedMin ? m - expectedMin : 0;
+              const status = lateMin > 0 ? `Retard ${lateMin} min` : "Normal";
+              return (
+                <div key={r.id} className="rounded-xl border border-brand/10 bg-background p-3 text-sm shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-brand-dark">{r.date.split("-").reverse().join("/")}</div>
+                      <div className="text-muted-foreground">{r.heure}</div>
+                    </div>
+                    <span
+                      className={
+                        isEntree
+                          ? "rounded-full bg-status-approved-bg px-2.5 py-0.5 text-xs font-medium text-status-approved-text"
+                          : "rounded-full bg-status-rejected-bg px-2.5 py-0.5 text-xs font-medium text-status-rejected-text"
+                      }
+                    >
+                      {isEntree ? "Entrée" : "Sortie"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">{status}</span>
+                    {typeof r.latitude === "number" ? (
+                      <span className="text-muted-foreground">{r.latitude.toFixed(3)}°, {r.longitude?.toFixed(3)}°</span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+            {!loading && viewRows.length === 0 ? (
+              <p className="py-6 text-center text-muted-foreground">Aucun pointage pour le moment.</p>
+            ) : null}
+          </div>
+
+          <div className="hidden md:block">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-muted-foreground">
                 <tr className="border-b">
@@ -348,6 +388,7 @@ export default function HistoriquePage() {
                 ) : null}
               </tbody>
             </table>
+            </div>
           </div>
         </CardContent>
       </Card>

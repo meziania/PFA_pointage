@@ -2,15 +2,19 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
+import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 import { getUserDoc, getUserRole, getUserStatut, userMustChangePassword } from "@/lib/firestore-helpers";
-import type { UserRole, UserStatut } from "@/lib/data-model";
+import { isProfileComplete } from "@/lib/profile-completeness";
+import type { UserDoc, UserRole, UserStatut } from "@/lib/data-model";
 
 type AuthState = {
   user: User | null;
   role: UserRole | null;
   statut: UserStatut | null;
   mustChangePassword: boolean;
+  profileComplete: boolean | null;
   profilePhotoURL: string | null;
   loading: boolean;
   refreshProfilePhoto: () => Promise<void>;
@@ -23,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [statut, setStatut] = useState<UserStatut | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const [profilePhotoURL, setProfilePhotoURL] = useState<string | null>(null);
   const [loading, setLoading] = useState(() => Boolean(getFirebaseAuth()));
 
@@ -51,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole(null);
         setStatut(null);
         setMustChangePassword(false);
+        setProfileComplete(null);
         setProfilePhotoURL(null);
         setLoading(false);
         return;
@@ -76,10 +82,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const profile = await getUserDoc(u.uid);
         setProfilePhotoURL(profile?.photoURL ?? u.photoURL ?? null);
+        if (r === "employe") {
+          setProfileComplete(profile ? isProfileComplete(profile) : false);
+        } else {
+          setProfileComplete(null);
+        }
       } catch {
         setRole(null);
         setStatut(null);
         setMustChangePassword(false);
+        setProfileComplete(null);
         setProfilePhotoURL(u.photoURL ?? null);
       } finally {
         setLoading(false);
@@ -89,9 +101,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const db = getFirebaseFirestore();
+    if (!db || !user?.uid || role !== "employe") return;
+
+    const ref = doc(db, "users", user.uid);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) {
+          setProfileComplete(false);
+          return;
+        }
+        setProfileComplete(isProfileComplete(snap.data() as UserDoc));
+      },
+      () => setProfileComplete(false),
+    );
+
+    return () => unsub();
+  }, [user?.uid, role]);
+
   const value = useMemo(
-    () => ({ user, role, statut, mustChangePassword, profilePhotoURL, loading, refreshProfilePhoto }),
-    [user, role, statut, mustChangePassword, profilePhotoURL, loading, refreshProfilePhoto],
+    () => ({ user, role, statut, mustChangePassword, profileComplete, profilePhotoURL, loading, refreshProfilePhoto }),
+    [user, role, statut, mustChangePassword, profileComplete, profilePhotoURL, loading, refreshProfilePhoto],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

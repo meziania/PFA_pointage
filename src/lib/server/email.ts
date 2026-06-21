@@ -1,5 +1,4 @@
-import nodemailer from "nodemailer";
-import { getAppUrl } from "@/lib/server/api-auth";
+import { getAppUrl } from "@/lib/server/api-errors";
 
 type MailPayload = {
   to: string;
@@ -46,6 +45,7 @@ async function sendViaResend(payload: MailPayload): Promise<void> {
 }
 
 async function sendViaSmtp(payload: MailPayload): Promise<void> {
+  const nodemailer = (await import("nodemailer")).default;
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT ?? 587),

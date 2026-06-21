@@ -1,65 +1,8 @@
-import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/server/firebase-admin";
 import type { UserDoc, UserRole, UserStatut } from "@/lib/data-model";
+import { ApiError } from "@/lib/server/api-errors";
 
-export class ApiError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-
-  static badRequest(message: string) {
-    return new ApiError(400, message);
-  }
-
-  static unauthorized(message = "Authentification requise") {
-    return new ApiError(401, message);
-  }
-
-  static forbidden(message = "Accès refusé") {
-    return new ApiError(403, message);
-  }
-
-  static notFound(message = "Ressource introuvable") {
-    return new ApiError(404, message);
-  }
-
-  static conflict(message: string) {
-    return new ApiError(409, message);
-  }
-
-  static server(message = "Erreur serveur") {
-    return new ApiError(500, message);
-  }
-}
-
-function isFirebaseAdminConfigError(error: unknown): boolean {
-  if (error instanceof Error && error.message.includes("FIREBASE_SERVICE_ACCOUNT_KEY")) return true;
-  const code = (error as { code?: string })?.code;
-  return code === "app/invalid-credential";
-}
-
-export function apiErrorResponse(error: unknown) {
-  if (error instanceof ApiError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
-  }
-  if (error && typeof error === "object" && "issues" in error) {
-    return NextResponse.json({ error: "Données invalides" }, { status: 400 });
-  }
-  if (isFirebaseAdminConfigError(error)) {
-    return NextResponse.json(
-      {
-        error:
-          "Configuration serveur incomplète. Ajoutez FIREBASE_SERVICE_ACCOUNT_KEY dans .env.local (Firebase Console → Paramètres → Comptes de service → Générer une nouvelle clé privée), puis redémarrez npm run dev.",
-      },
-      { status: 503 },
-    );
-  }
-  console.error(error);
-  return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-}
+export { ApiError, apiErrorResponse, normalizeEmail, isValidEmail, getAppUrl } from "@/lib/server/api-errors";
 
 function getBearerToken(request: Request): string | null {
   const header = request.headers.get("authorization") ?? request.headers.get("Authorization");
@@ -109,16 +52,4 @@ export async function requireEmploye(request: Request): Promise<{ uid: string; u
     throw ApiError.forbidden("Action réservée aux employés");
   }
   return session;
-}
-
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-export function getAppUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim() || "http://localhost:3000";
 }
