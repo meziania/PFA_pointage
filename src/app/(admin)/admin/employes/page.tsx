@@ -21,6 +21,7 @@ import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 import type { UserDoc } from "@/lib/data-model";
 import { apiErrorMessage, createEmployeeAccount, desactiverEmploye, reactiverEmploye, supprimerEmploye, updateEmploye } from "@/lib/user-management";
 import { StatusBadge, employeStatutVariant } from "@/components/ui/status-badge";
+import { EmployeeProfilePanel } from "@/components/admin/employee-profile-panel";
 
 type Row = UserDoc & { id: string };
 type SortKey = "nom" | "matricule" | "departement" | "poste" | "profil";
@@ -86,6 +87,7 @@ export default function AdminEmployesPage() {
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Row | null>(null);
+  const [viewingEmployee, setViewingEmployee] = useState<Row | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
 
@@ -205,6 +207,7 @@ export default function AdminEmployesPage() {
   }
 
   function startEdit(employee: Row) {
+    setViewingEmployee(null);
     setEditingEmployee(employee);
     editForm.reset({
       nom: employee.nom ?? "",
@@ -655,7 +658,13 @@ export default function AdminEmployesPage() {
                 <div key={r.id} className="mobile-data-card">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate font-semibold text-brand-dark">{r.nom}</div>
+                      <button
+                        type="button"
+                        className="truncate text-left font-semibold text-brand-dark hover:text-brand hover:underline"
+                        onClick={() => setViewingEmployee(r)}
+                      >
+                        {r.nom}
+                      </button>
                       <div className="truncate text-xs text-muted-foreground">{r.email}</div>
                     </div>
                     <StatusBadge variant={employeStatutVariant(r.statut)}>
@@ -676,8 +685,12 @@ export default function AdminEmployesPage() {
                       Profil {p.label}
                     </span>
                   </div>
-                  {r.role === "employe" ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
+                      <Button type="button" size="sm" variant="secondary" className="w-full sm:w-auto" onClick={() => setViewingEmployee(r)}>
+                        Voir profil
+                      </Button>
+                      {r.role === "employe" ? (
+                        <>
                       <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => startEdit(r)}>
                         Modifier
                       </Button>
@@ -713,10 +726,9 @@ export default function AdminEmployesPage() {
                       >
                         Supprimer
                       </Button>
+                        </>
+                      ) : null}
                     </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-muted-foreground">Compte administrateur</p>
-                  )}
                 </div>
               );
             })}
@@ -742,7 +754,15 @@ export default function AdminEmployesPage() {
               <tbody>
                 {filtered.map((r) => (
                   <tr key={r.id} className="border-b last:border-0">
-                    <td className="py-3 pr-4 font-medium">{r.nom}</td>
+                    <td className="py-3 pr-4">
+                      <button
+                        type="button"
+                        className="font-medium text-left hover:text-brand hover:underline"
+                        onClick={() => setViewingEmployee(r)}
+                      >
+                        {r.nom}
+                      </button>
+                    </td>
                     <td className="py-3 pr-4 text-muted-foreground">{r.email}</td>
                     <td className="py-3 pr-4">{r.matricule ?? "—"}</td>
                     <td className="py-3 pr-4">{r.departement ?? "—"}</td>
@@ -770,8 +790,12 @@ export default function AdminEmployesPage() {
                       </StatusBadge>
                     </td>
                     <td className="py-3 pr-4">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button type="button" size="sm" variant="secondary" onClick={() => setViewingEmployee(r)}>
+                          Voir profil
+                        </Button>
                       {r.role === "employe" ? (
-                        <div className="flex flex-wrap justify-end gap-2">
+                        <>
                           <Button type="button" size="sm" variant="outline" onClick={() => startEdit(r)}>
                             Modifier
                           </Button>
@@ -804,10 +828,9 @@ export default function AdminEmployesPage() {
                           >
                             Supprimer
                           </Button>
-                        </div>
-                      ) : (
-                        <div className="text-right text-xs text-muted-foreground">—</div>
-                      )}
+                        </>
+                      ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -823,6 +846,12 @@ export default function AdminEmployesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <EmployeeProfilePanel
+        employee={viewingEmployee}
+        onClose={() => setViewingEmployee(null)}
+        onEdit={startEdit}
+      />
     </div>
   );
 }
