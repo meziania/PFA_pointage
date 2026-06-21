@@ -38,6 +38,12 @@ export function demandeAccesVariant(statut: string): StatusVariant {
   return "pending";
 }
 
+export function demandeResetMdpVariant(statut: string): StatusVariant {
+  if (statut === "traitee") return "approved";
+  if (statut === "refusee") return "rejected";
+  return "pending";
+}
+
 export function employeStatutVariant(statut: string | undefined): StatusVariant {
   return (statut ?? "actif") === "actif" ? "approved" : "inactive";
 }

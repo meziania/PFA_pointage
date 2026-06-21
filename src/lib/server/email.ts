@@ -193,3 +193,85 @@ export async function sendJoinRequestAdminNotification(params: {
     `,
   });
 }
+
+export async function sendPasswordResetRequestAdminNotification(params: {
+  adminEmails: string[];
+  demandeId: string;
+  nom: string;
+  email: string;
+  message?: string;
+}): Promise<void> {
+  const recipients = [...new Set(params.adminEmails.map((e) => e.trim()).filter(Boolean))];
+  if (!recipients.length) {
+    console.warn("[email] Aucun destinataire admin — configurez ADMIN_NOTIFY_EMAIL ou un compte admin dans Firestore");
+    return;
+  }
+
+  const adminUrl = `${getAppUrl()}/admin/reinitialisation-mdp`;
+  const msgLine = params.message ? `Message : ${params.message}` : "";
+
+  await sendMail({
+    to: recipients.join(", "),
+    subject: `TimeTrack Pro — Réinitialisation mot de passe : ${params.nom}`,
+    text: [
+      "Un employé a demandé la réinitialisation de son mot de passe.",
+      "",
+      `Nom : ${params.nom}`,
+      `Email : ${params.email}`,
+      msgLine,
+      `Référence : ${params.demandeId}`,
+      "",
+      `Traiter la demande : ${adminUrl}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    html: `
+      <p>Un employé a demandé la réinitialisation de son mot de passe sur <strong>TimeTrack Pro</strong>.</p>
+      <ul>
+        <li><strong>Nom :</strong> ${params.nom}</li>
+        <li><strong>Email :</strong> ${params.email}</li>
+        ${params.message ? `<li><strong>Message :</strong> ${params.message}</li>` : ""}
+        <li><strong>Référence :</strong> ${params.demandeId}</li>
+      </ul>
+      <p><a href="${adminUrl}">Ouvrir le panneau admin — Réinitialisation MDP</a></p>
+    `,
+  });
+}
+
+export async function sendPasswordResetApprovedEmail(params: {
+  to: string;
+  nom: string;
+  email: string;
+  temporaryPassword: string;
+}): Promise<void> {
+  const loginUrl = `${getAppUrl()}/login`;
+  const changePasswordUrl = `${getAppUrl()}/changer-mot-de-passe`;
+
+  await sendMail({
+    to: params.to,
+    subject: "TimeTrack Pro — Nouveau mot de passe temporaire",
+    text: [
+      `Bonjour ${params.nom},`,
+      "",
+      "Votre demande de réinitialisation de mot de passe a été traitée par l'administrateur.",
+      "",
+      `Email : ${params.email}`,
+      `Nouveau mot de passe temporaire : ${params.temporaryPassword}`,
+      "",
+      `Connexion : ${loginUrl}`,
+      "",
+      "Connectez-vous avec ce mot de passe, puis changez-le immédiatement.",
+      `Page de changement : ${changePasswordUrl}`,
+    ].join("\n"),
+    html: `
+      <p>Bonjour <strong>${params.nom}</strong>,</p>
+      <p>Votre demande de réinitialisation de mot de passe a été traitée.</p>
+      <ul>
+        <li><strong>Email :</strong> ${params.email}</li>
+        <li><strong>Nouveau mot de passe temporaire :</strong> ${params.temporaryPassword}</li>
+      </ul>
+      <p><a href="${loginUrl}">Se connecter</a></p>
+      <p>Changez votre mot de passe dès la connexion.</p>
+    `,
+  });
+}

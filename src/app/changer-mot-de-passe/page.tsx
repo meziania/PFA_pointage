@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { updatePassword } from "firebase/auth";
+import { updatePassword, signOut } from "firebase/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -27,7 +27,7 @@ const formSchema = z
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { role, profileComplete } = useAuth();
+  const { role } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -49,15 +49,16 @@ export default function ChangePasswordPage() {
       await updatePassword(user, values.newPassword);
       await changePassword(values.newPassword);
 
-      toast.success("Mot de passe mis à jour");
       if (role === "admin") {
+        toast.success("Mot de passe mis à jour");
         router.push("/admin/dashboard");
-      } else if (profileComplete === false) {
-        router.push("/profil");
-      } else {
-        router.push("/pointage");
+        router.refresh();
+        return;
       }
-      router.refresh();
+
+      await signOut(auth);
+      toast.success("Mot de passe mis à jour — reconnectez-vous avec votre nouveau mot de passe.");
+      router.replace("/login");
     } catch (error) {
       toast.error(apiErrorMessage(error, "Impossible de changer le mot de passe."));
     } finally {

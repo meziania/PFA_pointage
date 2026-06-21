@@ -2,6 +2,19 @@ export type UserRole = "admin" | "employe";
 export type UserStatut = "actif" | "desactive";
 export type DemandeAccesStatut = "en_attente" | "approuvee" | "refusee";
 
+export type DemandeResetMdpStatut = "en_attente" | "traitee" | "refusee";
+
+export type DemandeResetMdpDoc = {
+  userId: string;
+  nom: string;
+  email: string;
+  message?: string;
+  statut: DemandeResetMdpStatut;
+  date_demande?: unknown;
+  date_traitement?: unknown;
+  traite_par?: string;
+};
+
 export type UserDoc = {
   nom: string;
   email: string;

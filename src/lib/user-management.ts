@@ -39,6 +39,38 @@ export async function supprimerDemandeAcces(requestId: string) {
   return apiFetch<{ ok: boolean }>(`/api/demandes-acces/${requestId}`, { method: "DELETE" });
 }
 
+export async function submitDemandeResetMdp(params: { email: string; message?: string }) {
+  return apiFetch<{ ok: true }>("/api/demandes-reset-mdp", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify(params),
+  });
+}
+
+export async function listDemandesResetMdp(params?: { statut?: "en_attente" | "traitee" | "refusee" }) {
+  const query = params?.statut ? `?statut=${params.statut}` : "";
+  return apiFetch<{ demandes: Array<Record<string, unknown> & { id: string }> }>(`/api/demandes-reset-mdp${query}`);
+}
+
+export async function traiterDemandeResetMdp(requestId: string) {
+  return apiFetch<{
+    statut: string;
+    nom: string;
+    email: string;
+    temporaryPassword: string;
+    emailSent: boolean;
+    loginUrl: string;
+  }>(`/api/demandes-reset-mdp/${requestId}/traiter`, { method: "PUT" });
+}
+
+export async function refuserDemandeResetMdp(requestId: string) {
+  return apiFetch<{ statut: string }>(`/api/demandes-reset-mdp/${requestId}/refuser`, { method: "PUT" });
+}
+
+export async function supprimerDemandeResetMdp(requestId: string) {
+  return apiFetch<{ ok: boolean }>(`/api/demandes-reset-mdp/${requestId}`, { method: "DELETE" });
+}
+
 export async function createEmployeeAccount(params: {
   nom: string;
   email: string;

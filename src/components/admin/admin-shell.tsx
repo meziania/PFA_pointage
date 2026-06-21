@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "firebase/auth";
 import {
   CalendarDays,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -26,6 +27,7 @@ const items = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/employes", label: "Employés", icon: Users },
   { href: "/admin/demandes", label: "Demandes", icon: UserPlus },
+  { href: "/admin/reinitialisation-mdp", label: "Réinit. MDP", icon: KeyRound },
   { href: "/admin/conges", label: "Congés", icon: CalendarDays },
   { href: "/admin/qr-code", label: "QR code", icon: QrCode },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },

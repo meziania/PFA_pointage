@@ -33,6 +33,22 @@
       ]
     },
     {
+      "collectionGroup": "demandes_reset_mdp",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "statut", "order": "ASCENDING" },
+        { "fieldPath": "date_demande", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "demandes_reset_mdp",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "email", "order": "ASCENDING" },
+        { "fieldPath": "statut", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "notifications",
       "queryScope": "COLLECTION",
       "fields": [

@@ -19,9 +19,12 @@ type ApprovedCredentials = {
   emailSent: boolean;
 };
 
-function formatDate(ts: unknown): string {
+function formatDemandeDateTime(ts: unknown): { date: string; time: string; label: string } {
   const d = unwrapTimestamp(ts);
-  return d ? d.toLocaleString("fr-FR") : "—";
+  if (!d) return { date: "—", time: "—", label: "—" };
+  const date = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return { date, time, label: `${date} à ${time}` };
 }
 
 function statutLabel(statut: DemandeAccesDoc["statut"]): string {
@@ -271,7 +274,15 @@ export default function AdminDemandesPage() {
                 </div>
                 <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                   {r.telephone ? <div>Tél. {r.telephone}</div> : null}
-                  <div>{formatDate(r.date_demande)}</div>
+                  {(() => {
+                    const dt = formatDemandeDateTime(r.date_demande);
+                    return (
+                      <div>
+                        <span className="font-medium text-foreground/80">Demandé le </span>
+                        {dt.label}
+                      </div>
+                    );
+                  })()}
                   {r.message ? <p className="line-clamp-2 text-foreground/80">{r.message}</p> : null}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -315,7 +326,7 @@ export default function AdminDemandesPage() {
                   <th className="py-2 pr-4">Candidat</th>
                   <th className="py-2 pr-4">Téléphone</th>
                   <th className="py-2 pr-4">Message</th>
-                  <th className="py-2 pr-4">Date</th>
+                  <th className="py-2 pr-4">Date et heure</th>
                   <th className="py-2 pr-4">Statut</th>
                   <th className="py-2 pr-4 text-right">Actions</th>
                 </tr>
@@ -331,7 +342,17 @@ export default function AdminDemandesPage() {
                     <td className="py-3 pr-4 max-w-[220px] truncate" title={r.message ?? ""}>
                       {r.message ?? "—"}
                     </td>
-                    <td className="py-3 pr-4 whitespace-nowrap">{formatDate(r.date_demande)}</td>
+                    <td className="py-3 pr-4 whitespace-nowrap tabular-nums">
+                      {(() => {
+                        const dt = formatDemandeDateTime(r.date_demande);
+                        return (
+                          <div>
+                            <div className="font-medium text-foreground">{dt.date}</div>
+                            <div className="text-xs text-muted-foreground">{dt.time}</div>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="py-3 pr-4">
                       <StatusBadge variant={demandeAccesVariant(r.statut)}>{statutLabel(r.statut)}</StatusBadge>
                     </td>

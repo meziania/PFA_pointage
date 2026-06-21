@@ -238,6 +238,38 @@ export function toHM(d: Date): string {
 
 export function unwrapTimestamp(ts: unknown): Date | null {
   if (ts instanceof Timestamp) return ts.toDate();
+  if (ts instanceof Date) return Number.isNaN(ts.getTime()) ? null : ts;
+  if (typeof ts === "string") {
+    const d = new Date(ts);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof ts === "number" && Number.isFinite(ts)) {
+    const d = new Date(ts);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (ts && typeof ts === "object") {
+    const o = ts as {
+      toDate?: () => Date;
+      toMillis?: () => number;
+      seconds?: number;
+      _seconds?: number;
+      nanoseconds?: number;
+      _nanoseconds?: number;
+    };
+    if (typeof o.toDate === "function") {
+      const d = o.toDate();
+      return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
+    }
+    if (typeof o.toMillis === "function") {
+      const d = new Date(o.toMillis());
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const sec = o.seconds ?? o._seconds;
+    if (typeof sec === "number" && Number.isFinite(sec)) {
+      const ns = o.nanoseconds ?? o._nanoseconds ?? 0;
+      return new Date(sec * 1000 + Math.floor(ns / 1_000_000));
+    }
+  }
   return null;
 }
 
