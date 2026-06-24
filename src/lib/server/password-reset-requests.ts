@@ -12,25 +12,31 @@ import {
   sendPasswordResetApprovedEmail,
   sendPasswordResetRequestAdminNotification,
 } from "@/lib/server/email";
+import { resolveAdminNotifyEmails } from "@/lib/server/admin-notify-emails";
 import type { DemandeResetMdpDoc, UserDoc } from "@/lib/data-model";
 
 const COLLECTION = "demandes_reset_mdp";
 
-async function resolveAdminNotifyEmails(): Promise<string[]> {
-  const fromEnv = (process.env.ADMIN_NOTIFY_EMAIL ?? "")
-    .split(",")
-    .map((e) => normalizeEmail(e.trim()))
-    .filter((e) => e && isValidEmail(e));
-
-  if (fromEnv.length) return [...new Set(fromEnv)];
-
-  const snap = await getAdminDb().collection("users").where("role", "==", "admin").limit(20).get();
-  const emails = snap.docs
-    .map((d) => (d.data() as UserDoc).email)
-    .filter((e): e is string => typeof e === "string" && isValidEmail(e))
-    .map(normalizeEmail);
-
-  return [...new Set(emails)];
+async function notifyAdminsPasswordReset(params: {
+  demandeId: string;
+  nom: string;
+  email: string;
+  message?: string;
+  reminder?: boolean;
+}) {
+  const adminEmails = await resolveAdminNotifyEmails();
+  if (!adminEmails.length) {
+    console.warn("[email] Aucun destinataire admin — définissez ADMIN_NOTIFY_EMAIL (ex. syspointage@outlook.com) sur Vercel");
+    return;
+  }
+  await sendPasswordResetRequestAdminNotification({
+    adminEmails,
+    demandeId: params.demandeId,
+    nom: params.nom,
+    email: params.email,
+    message: params.message,
+    reminder: params.reminder,
+  });
 }
 
 async function findActiveEmployeByEmail(email: string): Promise<(UserDoc & { id: string }) | null> {
@@ -63,7 +69,22 @@ export async function createPasswordResetRequest(input: {
     .limit(1)
     .get();
 
-  if (!pendingSnap.empty) return { ok: true };
+  if (!pendingSnap.empty) {
+    const existing = pendingSnap.docs[0];
+    const data = existing.data() as DemandeResetMdpDoc;
+    try {
+      await notifyAdminsPasswordReset({
+        demandeId: existing.id,
+        nom: data.nom ?? employe.nom,
+        email,
+        message: message || data.message,
+        reminder: true,
+      });
+    } catch (err) {
+      console.error("[email] Rappel admin réinitialisation MDP:", err);
+    }
+    return { ok: true };
+  }
 
   const docData: Record<string, unknown> = {
     userId: employe.id,
@@ -77,9 +98,7 @@ export async function createPasswordResetRequest(input: {
   const ref = await getAdminDb().collection(COLLECTION).add(docData);
 
   try {
-    const adminEmails = await resolveAdminNotifyEmails();
-    await sendPasswordResetRequestAdminNotification({
-      adminEmails,
+    await notifyAdminsPasswordReset({
       demandeId: ref.id,
       nom: employe.nom,
       email,

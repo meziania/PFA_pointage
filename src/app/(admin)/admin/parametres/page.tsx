@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { DEFAULT_GEOFENCE } from "@/lib/geofence-defaults";
 import { apiErrorMessage, getParametresEntreprise, updateParametresEntreprise } from "@/lib/user-management";
 
 const schema = z.object({
@@ -25,7 +26,11 @@ export default function AdminParametresPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { latitude: 0, longitude: 0, rayon_metres: 100 },
+    defaultValues: {
+      latitude: DEFAULT_GEOFENCE.latitude,
+      longitude: DEFAULT_GEOFENCE.longitude,
+      rayon_metres: DEFAULT_GEOFENCE.rayon_metres,
+    },
   });
 
   useEffect(() => {
@@ -66,7 +71,11 @@ export default function AdminParametresPage() {
         <h1 className="text-2xl font-bold">Paramètres entreprise</h1>
         <p className="text-muted-foreground">
           Zone de pointage utilisée par <code className="text-xs">POST /api/pointage</code> pour valider la
-          géolocalisation.
+          géolocalisation. Site par défaut :{" "}
+          <a href={DEFAULT_GEOFENCE.mapsUrl} target="_blank" rel="noreferrer" className="text-brand underline">
+            {DEFAULT_GEOFENCE.label}
+          </a>
+          .
         </p>
       </div>
 

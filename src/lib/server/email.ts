@@ -1,4 +1,13 @@
 import { getAppUrl } from "@/lib/server/api-errors";
+import {
+  buildAlertBanner,
+  buildButton,
+  buildCredentialsBox,
+  buildEmailLayout,
+  buildInfoRows,
+  buildSecondaryLink,
+  escapeHtml,
+} from "@/lib/server/email-templates";
 
 type MailPayload = {
   to: string;
@@ -98,6 +107,17 @@ export async function sendAccessApprovedEmail(params: {
   const loginUrl = `${getAppUrl()}/login`;
   const changePasswordUrl = `${getAppUrl()}/changer-mot-de-passe`;
 
+  const bodyHtml = `
+    <p style="margin:0 0 16px 0;">Bonjour <strong>${escapeHtml(params.nom)}</strong>,</p>
+    ${buildAlertBanner("Votre demande d'accès a été acceptée. Vous pouvez dès maintenant vous connecter à TimeTrack Pro.", "success")}
+    ${buildCredentialsBox({ email: params.email, password: params.temporaryPassword })}
+    ${buildButton(loginUrl, "Se connecter")}
+    ${buildSecondaryLink(changePasswordUrl, "Changer mon mot de passe à la première connexion")}
+    <p style="margin:24px 0 0 0;font-size:13px;color:#5a6b65;">
+      Pour des raisons de sécurité, vous devrez modifier votre mot de passe temporaire dès votre première connexion.
+    </p>
+  `;
+
   await sendMail({
     to: params.to,
     subject: "TimeTrack Pro — Votre accès a été approuvé",
@@ -114,21 +134,26 @@ export async function sendAccessApprovedEmail(params: {
       "",
       "Vous devrez changer votre mot de passe à la première connexion.",
     ].join("\n"),
-    html: `
-      <p>Bonjour <strong>${params.nom}</strong>,</p>
-      <p>Votre demande d'accès à <strong>TimeTrack Pro</strong> a été acceptée.</p>
-      <ul>
-        <li><strong>Email :</strong> ${params.email}</li>
-        <li><strong>Mot de passe temporaire :</strong> ${params.temporaryPassword}</li>
-      </ul>
-      <p><a href="${loginUrl}">Se connecter</a></p>
-      <p><a href="${changePasswordUrl}">Changer mon mot de passe</a></p>
-      <p>Vous devrez changer votre mot de passe à la première connexion.</p>
-    `,
+    html: buildEmailLayout({
+      preheader: `Accès approuvé — connectez-vous avec ${params.email}`,
+      title: "Votre accès a été approuvé",
+      subtitle: "Bienvenue sur TimeTrack Pro",
+      variant: "success",
+      bodyHtml,
+    }),
   });
 }
 
 export async function sendAccessRefusedEmail(params: { to: string; nom: string }): Promise<void> {
+  const bodyHtml = `
+    <p style="margin:0 0 16px 0;">Bonjour <strong>${escapeHtml(params.nom)}</strong>,</p>
+    ${buildAlertBanner("Votre demande d'accès à TimeTrack Pro a été refusée par l'administrateur RH.", "danger")}
+    <p style="margin:0;font-size:14px;line-height:1.6;color:#1a2e28;">
+      Si vous pensez qu'il s'agit d'une erreur ou si vous souhaitez obtenir plus de détails,
+      veuillez contacter directement votre responsable RH ou le service des ressources humaines.
+    </p>
+  `;
+
   await sendMail({
     to: params.to,
     subject: "TimeTrack Pro — Demande d'accès refusée",
@@ -138,11 +163,13 @@ export async function sendAccessRefusedEmail(params: { to: string; nom: string }
       "Votre demande d'accès à TimeTrack Pro a été refusée par l'administrateur.",
       "Pour plus d'informations, contactez votre responsable RH.",
     ].join("\n"),
-    html: `
-      <p>Bonjour <strong>${params.nom}</strong>,</p>
-      <p>Votre demande d'accès à <strong>TimeTrack Pro</strong> a été refusée par l'administrateur.</p>
-      <p>Pour plus d'informations, contactez votre responsable RH.</p>
-    `,
+    html: buildEmailLayout({
+      preheader: "Votre demande d'accès n'a pas été acceptée",
+      title: "Demande d'accès refusée",
+      subtitle: "TimeTrack Pro — Notification employé",
+      variant: "danger",
+      bodyHtml,
+    }),
   });
 }
 
@@ -163,6 +190,29 @@ export async function sendJoinRequestAdminNotification(params: {
   const adminUrl = `${getAppUrl()}/admin/demandes`;
   const telLine = params.telephone ? `Téléphone : ${params.telephone}` : "";
   const msgLine = params.message ? `Message : ${params.message}` : "";
+  const nowLabel = new Date().toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const rows = [
+    { label: "Date", value: nowLabel },
+    { label: "Nom", value: params.nom },
+    { label: "Email", value: params.email },
+    ...(params.telephone ? [{ label: "Téléphone", value: params.telephone }] : []),
+    ...(params.message ? [{ label: "Message", value: params.message }] : []),
+    { label: "Référence", value: params.demandeId },
+  ];
+
+  const bodyHtml = `
+    ${buildAlertBanner(`Une nouvelle demande d'accès vient d'être soumise par ${params.nom}.`, "admin")}
+    ${buildInfoRows(rows)}
+    ${buildButton(adminUrl, "Traiter la demande")}
+    ${buildSecondaryLink(adminUrl, "Ouvrir le panneau admin — Demandes d'accès")}
+  `;
 
   await sendMail({
     to: recipients.join(", "),
@@ -170,6 +220,7 @@ export async function sendJoinRequestAdminNotification(params: {
     text: [
       "Une nouvelle demande pour rejoindre TimeTrack Pro vient d'être soumise.",
       "",
+      `Date : ${nowLabel}`,
       `Nom : ${params.nom}`,
       `Email : ${params.email}`,
       telLine,
@@ -180,17 +231,14 @@ export async function sendJoinRequestAdminNotification(params: {
     ]
       .filter(Boolean)
       .join("\n"),
-    html: `
-      <p>Une nouvelle demande pour rejoindre <strong>TimeTrack Pro</strong> vient d'être soumise.</p>
-      <ul>
-        <li><strong>Nom :</strong> ${params.nom}</li>
-        <li><strong>Email :</strong> ${params.email}</li>
-        ${params.telephone ? `<li><strong>Téléphone :</strong> ${params.telephone}</li>` : ""}
-        ${params.message ? `<li><strong>Message :</strong> ${params.message}</li>` : ""}
-        <li><strong>Référence :</strong> ${params.demandeId}</li>
-      </ul>
-      <p><a href="${adminUrl}">Ouvrir le panneau admin — Demandes d'accès</a></p>
-    `,
+    html: buildEmailLayout({
+      preheader: `Nouvelle demande d'accès — ${params.nom} (${params.email})`,
+      title: "Nouvelle demande d'accès",
+      subtitle: "Un employé souhaite rejoindre TimeTrack Pro",
+      variant: "admin",
+      bodyHtml,
+      footerNote: "Notification administrateur — connectez-vous au panneau RH pour approuver ou refuser cette demande.",
+    }),
   });
 }
 
@@ -200,6 +248,7 @@ export async function sendPasswordResetRequestAdminNotification(params: {
   nom: string;
   email: string;
   message?: string;
+  reminder?: boolean;
 }): Promise<void> {
   const recipients = [...new Set(params.adminEmails.map((e) => e.trim()).filter(Boolean))];
   if (!recipients.length) {
@@ -209,15 +258,43 @@ export async function sendPasswordResetRequestAdminNotification(params: {
 
   const adminUrl = `${getAppUrl()}/admin/reinitialisation-mdp`;
   const msgLine = params.message ? `Message : ${params.message}` : "";
+  const nowLabel = new Date().toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const intro = params.reminder
+    ? "Rappel : une demande de réinitialisation de mot de passe est toujours en attente de traitement."
+    : "Un employé a demandé la réinitialisation de son mot de passe.";
+
+  const rows = [
+    { label: "Date", value: nowLabel },
+    { label: "Nom", value: params.nom },
+    { label: "Email employé", value: params.email },
+    ...(params.message ? [{ label: "Message", value: params.message }] : []),
+    { label: "Référence", value: params.demandeId },
+  ];
+
+  const bodyHtml = `
+    ${buildAlertBanner(intro, params.reminder ? "warning" : "admin")}
+    ${buildInfoRows(rows)}
+    ${buildButton(adminUrl, "Générer un nouveau mot de passe")}
+    ${buildSecondaryLink(adminUrl, "Ouvrir — Réinitialisation MDP")}
+  `;
 
   await sendMail({
     to: recipients.join(", "),
-    subject: `TimeTrack Pro — Réinitialisation mot de passe : ${params.nom}`,
+    subject: params.reminder
+      ? `[Rappel] TimeTrack Pro — Réinitialisation MDP : ${params.nom}`
+      : `TimeTrack Pro — Réinitialisation mot de passe : ${params.nom}`,
     text: [
-      "Un employé a demandé la réinitialisation de son mot de passe.",
+      intro,
       "",
+      `Date de la notification : ${nowLabel}`,
       `Nom : ${params.nom}`,
-      `Email : ${params.email}`,
+      `Email employé : ${params.email}`,
       msgLine,
       `Référence : ${params.demandeId}`,
       "",
@@ -225,16 +302,14 @@ export async function sendPasswordResetRequestAdminNotification(params: {
     ]
       .filter(Boolean)
       .join("\n"),
-    html: `
-      <p>Un employé a demandé la réinitialisation de son mot de passe sur <strong>TimeTrack Pro</strong>.</p>
-      <ul>
-        <li><strong>Nom :</strong> ${params.nom}</li>
-        <li><strong>Email :</strong> ${params.email}</li>
-        ${params.message ? `<li><strong>Message :</strong> ${params.message}</li>` : ""}
-        <li><strong>Référence :</strong> ${params.demandeId}</li>
-      </ul>
-      <p><a href="${adminUrl}">Ouvrir le panneau admin — Réinitialisation MDP</a></p>
-    `,
+    html: buildEmailLayout({
+      preheader: `${params.reminder ? "[Rappel] " : ""}Réinitialisation MDP — ${params.nom}`,
+      title: params.reminder ? "Rappel — réinitialisation MDP" : "Demande de réinitialisation MDP",
+      subtitle: `${params.nom} — ${params.email}`,
+      variant: params.reminder ? "warning" : "admin",
+      bodyHtml,
+      footerNote: "Notification administrateur — générez un mot de passe temporaire depuis le panneau RH.",
+    }),
   });
 }
 
@@ -246,6 +321,21 @@ export async function sendPasswordResetApprovedEmail(params: {
 }): Promise<void> {
   const loginUrl = `${getAppUrl()}/login`;
   const changePasswordUrl = `${getAppUrl()}/changer-mot-de-passe`;
+
+  const bodyHtml = `
+    <p style="margin:0 0 16px 0;">Bonjour <strong>${escapeHtml(params.nom)}</strong>,</p>
+    ${buildAlertBanner("Votre demande de réinitialisation de mot de passe a été traitée par l'administrateur.", "success")}
+    ${buildCredentialsBox({
+      email: params.email,
+      password: params.temporaryPassword,
+      passwordLabel: "Nouveau mot de passe temporaire",
+    })}
+    ${buildButton(loginUrl, "Se connecter")}
+    ${buildSecondaryLink(changePasswordUrl, "Changer mon mot de passe immédiatement")}
+    <p style="margin:24px 0 0 0;font-size:13px;color:#5a6b65;">
+      Connectez-vous avec ce mot de passe, puis modifiez-le dès la première connexion pour sécuriser votre compte.
+    </p>
+  `;
 
   await sendMail({
     to: params.to,
@@ -263,15 +353,12 @@ export async function sendPasswordResetApprovedEmail(params: {
       "Connectez-vous avec ce mot de passe, puis changez-le immédiatement.",
       `Page de changement : ${changePasswordUrl}`,
     ].join("\n"),
-    html: `
-      <p>Bonjour <strong>${params.nom}</strong>,</p>
-      <p>Votre demande de réinitialisation de mot de passe a été traitée.</p>
-      <ul>
-        <li><strong>Email :</strong> ${params.email}</li>
-        <li><strong>Nouveau mot de passe temporaire :</strong> ${params.temporaryPassword}</li>
-      </ul>
-      <p><a href="${loginUrl}">Se connecter</a></p>
-      <p>Changez votre mot de passe dès la connexion.</p>
-    `,
+    html: buildEmailLayout({
+      preheader: `Nouveau mot de passe temporaire pour ${params.email}`,
+      title: "Mot de passe réinitialisé",
+      subtitle: "Vos nouveaux identifiants de connexion",
+      variant: "success",
+      bodyHtml,
+    }),
   });
 }

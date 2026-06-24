@@ -9,27 +9,11 @@ import { getUserDocAdmin } from "@/lib/server/api-auth";
 import { getAdminAuth, getAdminDb } from "@/lib/server/firebase-admin";
 import { generateTempPassword } from "@/lib/server/password";
 import { sendAccessApprovedEmail, sendAccessRefusedEmail, sendJoinRequestAdminNotification } from "@/lib/server/email";
+import { resolveAdminNotifyEmails } from "@/lib/server/admin-notify-emails";
 import { createProfileRequiredNotification } from "@/lib/server/notifications";
 import type { DemandeAccesDoc, UserDoc } from "@/lib/data-model";
 
 const COLLECTION = "demandes_acces";
-
-async function resolveAdminNotifyEmails(): Promise<string[]> {
-  const fromEnv = (process.env.ADMIN_NOTIFY_EMAIL ?? "")
-    .split(",")
-    .map((e) => normalizeEmail(e.trim()))
-    .filter((e) => e && isValidEmail(e));
-
-  if (fromEnv.length) return [...new Set(fromEnv)];
-
-  const snap = await getAdminDb().collection("users").where("role", "==", "admin").limit(20).get();
-  const emails = snap.docs
-    .map((d) => (d.data() as UserDoc).email)
-    .filter((e): e is string => typeof e === "string" && isValidEmail(e))
-    .map(normalizeEmail);
-
-  return [...new Set(emails)];
-}
 
 async function emailAlreadyRegistered(email: string): Promise<boolean> {
   const normalized = normalizeEmail(email);

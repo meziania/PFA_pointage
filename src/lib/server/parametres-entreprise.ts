@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/server/firebase-admin";
 import { ApiError } from "@/lib/server/api-auth";
+import { DEFAULT_GEOFENCE } from "@/lib/geofence-defaults";
 import type { ParametresEntrepriseDoc } from "@/lib/data-model";
 
 const DOC_ID = "default";
@@ -56,13 +57,17 @@ export async function getGeofenceSettings(): Promise<{ latitude: number; longitu
   const orgLat = process.env.ORG_LAT ?? process.env.NEXT_PUBLIC_ORG_LAT;
   const orgLon = process.env.ORG_LON ?? process.env.NEXT_PUBLIC_ORG_LON;
   const orgRadius = process.env.ORG_RADIUS_M ?? process.env.NEXT_PUBLIC_ORG_RADIUS_M;
-  if (!orgLat || !orgLon || !orgRadius) return null;
 
-  const latitude = Number(orgLat);
-  const longitude = Number(orgLon);
-  const radiusM = Number(orgRadius);
+  const latitude = orgLat ? Number(orgLat) : DEFAULT_GEOFENCE.latitude;
+  const longitude = orgLon ? Number(orgLon) : DEFAULT_GEOFENCE.longitude;
+  const radiusM = orgRadius ? Number(orgRadius) : DEFAULT_GEOFENCE.rayon_metres;
+
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radiusM) || radiusM <= 0) {
-    return null;
+    return {
+      latitude: DEFAULT_GEOFENCE.latitude,
+      longitude: DEFAULT_GEOFENCE.longitude,
+      radiusM: DEFAULT_GEOFENCE.rayon_metres,
+    };
   }
 
   return { latitude, longitude, radiusM };
