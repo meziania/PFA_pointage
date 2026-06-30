@@ -22,8 +22,15 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { AdminMobileBottomNav } from "@/components/admin/admin-mobile-bottom-nav";
+import { NavBadge } from "@/components/admin/nav-badge";
+import { getNavBadgeCount, useAdminPendingCounts } from "@/components/admin/use-admin-pending-counts";
 
-type NavItem = { href: string; label: string; icon: typeof ClipboardList };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof ClipboardList;
+  badge?: "conges" | "demandes";
+};
 
 const navSections: { title: string; items: NavItem[] }[] = [
   {
@@ -37,8 +44,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "Ressources humaines",
     items: [
       { href: "/admin/employes", label: "Employés", icon: Users },
-      { href: "/admin/conges", label: "Congés", icon: CalendarDays },
-      { href: "/admin/demandes", label: "Demandes", icon: UserPlus },
+      { href: "/admin/conges", label: "Congés", icon: CalendarDays, badge: "conges" },
+      { href: "/admin/demandes", label: "Demandes", icon: UserPlus, badge: "demandes" },
       { href: "/admin/reinitialisation-mdp", label: "Réinit. MDP", icon: KeyRound },
     ],
   },
@@ -52,6 +59,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pendingCounts = useAdminPendingCounts();
 
   async function handleLogout() {
     const auth = getFirebaseAuth();
@@ -72,12 +80,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             {section.title}
           </p>
           <nav className="flex flex-col gap-0.5">
-            {section.items.map((it) => (
-              <Link key={it.href} href={it.href} onClick={() => setMobileOpen(false)} className={navLinkClass(it.href)}>
-                <it.icon className="size-4 shrink-0" aria-hidden />
-                {it.label}
-              </Link>
-            ))}
+            {section.items.map((it) => {
+              const active = pathname === it.href || (it.href !== "/admin/dashboard" && pathname?.startsWith(it.href));
+              const badgeCount = getNavBadgeCount(it.badge, pendingCounts);
+              return (
+                <Link key={it.href} href={it.href} onClick={() => setMobileOpen(false)} className={navLinkClass(it.href)}>
+                  <it.icon className="size-4 shrink-0" aria-hidden />
+                  <span className="flex-1 truncate">{it.label}</span>
+                  <NavBadge count={badgeCount} active={active} />
+                </Link>
+              );
+            })}
           </nav>
         </div>
       ))}
@@ -115,7 +128,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <main className="min-w-0 pb-mobile-nav md:pb-0">{children}</main>
       </div>
 
-      <AdminMobileBottomNav onOpenMenu={() => setMobileOpen(true)} />
+      <AdminMobileBottomNav onOpenMenu={() => setMobileOpen(true)} pendingCounts={pendingCounts} />
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 md:hidden">
