@@ -1,0 +1,493 @@
+' =============================================================================
+' TimeTrack Pro — Diagrammes UML (PlantUML)
+' Compilation : plantuml docs/uml/timetrack-pro-diagrammes.puml
+' =============================================================================
+
+' -----------------------------------------------------------------------------
+' 1. DIAGRAMME DE CAS D'UTILISATION
+' -----------------------------------------------------------------------------
+@startuml usecase_timetrack_pro
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Employé" as emp
+actor "Admin RH" as adm
+actor "Système\nFirebase" as sys
+
+rectangle "Espace employé" {
+  usecase "Se connecter" as UC1
+  usecase "Demander accès" as UC2
+  usecase "Mot de passe\noublié" as UC3
+  usecase "Pointer\n(GPS + QR)" as UC4
+  usecase "Consulter historique" as UC5
+  usecase "Demander congé" as UC6
+  usecase "Gérer profil" as UC7
+}
+
+rectangle "Espace admin" {
+  usecase "Consulter présence\n(KPI · journal · anomalies)" as UA1
+  usecase "Gérer employés" as UA2
+  usecase "Demandes accès" as UA3
+  usecase "Réinit. MDP" as UA4
+  usecase "Valider congés" as UA5
+  usecase "Afficher QR" as UA6
+  usecase "Paramètres géofence" as UA7
+}
+
+usecase "Valider pointage" as US1
+usecase "Envoyer emails" as US2
+
+emp --> UC1
+emp --> UC2
+emp --> UC3
+emp --> UC4
+emp --> UC5
+emp --> UC6
+emp --> UC7
+
+adm --> UA1
+adm --> UA2
+adm --> UA3
+adm --> UA4
+adm --> UA5
+adm --> UA6
+adm --> UA7
+
+UC4 ..> US1 : <<include>>
+UA3 ..> US2 : <<include>>
+UA4 ..> US2 : <<include>>
+sys ..> US1
+sys ..> US2
+
+@enduml
+
+
+' -----------------------------------------------------------------------------
+' 2. DIAGRAMME DE CLASSES (modèle métier Firestore)
+' -----------------------------------------------------------------------------
+@startuml class_timetrack_pro
+skinparam classAttributeIconSize 0
+hide empty members
+
+class User {
+  - id: string
+  - nom: string
+  - email: string
+  - role: admin | employe
+  - statut: actif | desactive
+  - doit_changer_mdp: boolean
+  - matricule: string
+  - telephone: string
+  - departement: string
+  - poste: string
+  - cin: string
+  - photoURL: string
+  + isProfileComplete(): boolean
+}
+
+class Pointage {
+  - userId: string
+  - date: string
+  - heure: string
+  - type: entree | sortie
+  - latitude: number
+  - longitude: number
+  - valide: boolean
+}
+
+class Conge {
+  - userId: string
+  - dateDebut: string
+  - dateFin: string
+  - type: annuel | maladie | exceptionnel
+  - statut: en_attente | valide | refuse
+}
+
+class DemandeAcces {
+  - nom: string
+  - email: string
+  - telephone: string
+  - statut: en_attente | approuvee | refusee
+  - date_demande: Timestamp
+  - userId: string
+}
+
+class DemandeResetMdp {
+  - userId: string
+  - email: string
+  - nom: string
+  - statut: en_attente | traitee | refusee
+  - date_demande: Timestamp
+}
+
+class ParametresEntreprise {
+  - latitude: number
+  - longitude: number
+  - rayon_metres: number
+}
+
+class Notification {
+  - userId: string
+  - title: string
+  - body: string
+  - type: string
+  - read: boolean
+}
+
+class QRSettings {
+  - qrSecret: string
+  - qrMode: dynamic
+  - windowMs: 30000
+}
+
+class PointageService <<Service>> {
+  + validateQr(token: string): boolean
+  + validateGeofence(lat, lon): boolean
+  + createPointage(uid: string): Pointage
+}
+
+User "1" -- "0..*" Pointage : enregistre >
+User "1" -- "0..*" Conge : demande >
+User "1" -- "0..*" Notification : reçoit >
+User "1" -- "0..*" DemandeResetMdp : initie >
+
+PointageService ..> QRSettings : uses
+PointageService ..> ParametresEntreprise : uses
+PointageService ..> Pointage : creates
+
+@enduml
+
+
+' -----------------------------------------------------------------------------
+' 3. DIAGRAMMES D'ACTIVITÉ
+' -----------------------------------------------------------------------------
+
+@startuml activite_pointage
+title Flux de pointage employé (GPS + QR)
+
+start
+:Activer GPS;
+if (Dans zone autorisée ?) then (Oui)
+  :Scanner QR code (caméra);
+  if (QR valide ?) then (Oui)
+    :POST /api/pointage\n(lat, lon, token QR);
+    if (Serveur OK ?) then (Oui)
+      :Entrée / Sortie enregistrée;
+      :Afficher toast succès;
+      stop
+    else (Non)
+      :Message erreur serveur;
+      stop
+    endif
+  else (Non)
+    :Message erreur QR;
+    stop
+  endif
+else (Non)
+  :Message hors zone géofence;
+  stop
+endif
+
+@enduml
+
+
+@startuml activite_reset_mdp
+title Réinitialisation mot de passe
+
+start
+partition "Employé" {
+  :Formulaire /mot-de-passe-oublie;
+  :Saisir email;
+}
+partition "Système" {
+  :API crée demande\n(collection demandes_reset_mdp);
+  :Envoi email admin (Outlook);
+}
+partition "Admin RH" {
+  :Consulter /admin/reinitialisation-mdp;
+  :Générer mot de passe temporaire;
+  :Firebase Auth updateUser\n+ doit_changer_mdp = true;
+  :Transmettre MDP à l'employé;
+}
+partition "Employé" {
+  :Se reconnecter;
+  :Changer mot de passe\n(/changer-mot-de-passe);
+}
+stop
+
+@enduml
+
+
+@startuml activite_approbation_acces
+title Approbation demande d'accès
+
+start
+partition "Employé" {
+  :Formulaire /register;
+  :Soumettre demande d'accès;
+}
+partition "Système" {
+  :Enregistrer demande\n(collection demandes_acces);
+  :Notifier admin par email;
+}
+partition "Admin RH" {
+  :Consulter /admin/demandes;
+  if (Décision ?) then (Approuver)
+    :Créer compte Firebase Auth;
+    :Créer document users/{uid};
+    :Marquer demande approuvée;
+    :Envoyer identifiants par email;
+    stop
+  else (Refuser)
+    :Marquer demande refusée;
+    stop
+  endif
+}
+
+@enduml
+
+
+@startuml activite_consultation_presence_rh
+title Consultation présence — espace admin RH
+
+start
+partition "Admin RH" {
+  :Ouvrir /admin/dashboard;
+  :Consulter KPIs\n(actifs · sur site · absents · taux);
+}
+if (Vue souhaitée ?) then (Aujourd'hui)
+  :Tableau live par employé\n(présent · retard · parti · congé);
+elseif (Journal) then
+  :Filtrer par employé / période;
+  :Consulter journal pointages;
+  if (Export ?) then (Oui)
+    :Télécharger CSV;
+  endif
+elseif (Analyses) then
+  :Graphiques heures (7 j)\net congés par statut;
+else (Anomalies)
+  :Retards · absences · sorties anticipées\n(congés validés exclus);
+endif
+stop
+
+@enduml
+
+
+' -----------------------------------------------------------------------------
+' 4. DIAGRAMMES DE SÉQUENCE
+' -----------------------------------------------------------------------------
+
+@startuml sequence_pointage
+title Pointage (GPS + QR)
+
+actor Employé as emp
+participant "App\n/pointage" as ui
+participant "API\n/api/pointage" as api
+database "Firestore" as fs
+
+emp -> ui : Activer GPS
+ui --> emp : Statut zone (géofence)
+
+emp -> ui : Scanner QR (caméra)
+ui -> api : POST lat, lon, qrToken
+
+activate api
+api -> api : validateQr(token)
+api -> api : validateGeofence(lat, lon)
+api -> fs : add document pointages
+fs --> api : 201 Created
+deactivate api
+
+api --> ui : type entree | sortie
+ui --> emp : Toast succès
+
+@enduml
+
+
+@startuml sequence_approbation_acces
+title Approbation demande d'accès
+
+actor "Admin RH" as adm
+participant "Admin UI\n/demandes" as ui
+participant "API\n/approuver" as api
+participant "Firebase Auth" as auth
+database "Firestore" as fs
+participant "Email\n(Resend)" as mail
+
+adm -> ui : Approuver demande
+ui -> api : PUT /api/demandes-acces/{id}/approuver
+
+activate api
+api -> auth : createUser(email, tempPassword)
+auth --> api : uid
+
+api -> fs : set users/{uid}
+api -> fs : update demande (approuvee)
+api -> mail : sendAccessApprovedEmail()
+mail --> api : OK
+deactivate api
+
+api --> ui : identifiants générés
+ui --> adm : Afficher mot de passe temporaire
+
+@enduml
+
+
+@startuml sequence_reset_mdp
+title Demande réinitialisation mot de passe
+
+actor Employé as emp
+participant "Page\n/mot-de-passe-oublie" as pub
+participant "API\n/demandes-reset-mdp" as api
+database "Firestore" as fs
+participant "Email\nOutlook" as mail
+actor "Admin RH" as adm
+participant "Firebase Auth" as auth
+
+emp -> pub : Saisir email
+pub -> api : POST demande
+
+activate api
+api -> fs : add demandes_reset_mdp
+api -> mail : notifyAdmin()
+deactivate api
+
+mail -> adm : Alerte Outlook
+
+adm -> api : PUT traiter (générer MDP)
+
+activate api
+api -> auth : updateUser(password)
+api -> fs : update demande (traitee)
+deactivate api
+
+adm --> emp : Transmettre MDP\n(email ou oral)
+
+  emp -> auth : Connexion + changement MDP
+
+@enduml
+
+
+' -----------------------------------------------------------------------------
+' 5. DIAGRAMME DE DÉPLOIEMENT
+' -----------------------------------------------------------------------------
+
+@startuml deployment_timetrack_pro
+!theme plain
+skinparam shadowing false
+skinparam nodesep 50
+skinparam ranksep 45
+skinparam componentStyle rectangle
+title Diagramme de déploiement — TimeTrack Pro\n(systemdepointage.vercel.app)
+
+actor "Employé" as emp #E1F5EE
+actor "Administrateur RH" as admin #E1F5EE
+
+rectangle "Poste client" as client #F4F7F6 {
+  node "Smartphone\n(navigateur mobile)" as phone {
+    component "Interface employé\n/pointage · /historique · /conges" as ui_emp
+    component "GPS + Caméra\n(Navigator API · html5-qrcode)" as sensors
+  }
+  node "PC / Tablette\n(navigateur desktop)" as desktop {
+    component "Interface admin\n/admin/dashboard · employés · congés" as ui_admin
+    component "QR kiosk\n/admin/qr-code" as qr_kiosk
+  }
+}
+
+cloud "Vercel Cloud\n(Hébergement serverless)" as vercel #E8F4FC {
+  node "Runtime Node.js" as runtime {
+    artifact "Next.js 16\nApp Router + React 19" as next #FFFFFF
+    artifact "Routes API serverless\n/api/pointage · /api/demandes-*" as api #FFFFFF
+    artifact "Middleware + Auth\n(Firebase session)" as mw #FFFFFF
+  }
+}
+
+cloud "Google Cloud\n(Firebase)" as firebase #FFF8E7 {
+  node "Firebase Authentication" as fauth {
+    database "Comptes\nemail / mot de passe" as accounts
+  }
+  node "Cloud Firestore" as firestore {
+    database "Collections NoSQL" as cols
+    note right of cols
+      users · pointages · conges
+      demandes_acces · demandes_reset_mdp
+      parametres_entreprise · notifications
+    end note
+  }
+  component "Firestore Security Rules" as rules
+}
+
+cloud "Resend\n(Service e-mail)" as resend #F3E8FF {
+  component "API REST\n/emails" as resend_api
+}
+
+actor "Boîte e-mail\nadmin RH" as mailbox #E1F5EE
+
+emp -down-> phone
+admin -down-> desktop
+
+ui_emp -down-> next : HTTPS\n(SSR / CSR)
+ui_admin -down-> next : HTTPS
+sensors ..> ui_emp : lat, lon\nQR token
+
+next -down-> mw
+mw -down-> api
+api -down-> fauth : Firebase Admin SDK
+api -down-> firestore : Firebase Admin SDK\nvalidation pointage
+ui_emp -right-> fauth : Firebase Client SDK\n(login)
+ui_admin -right-> fauth : Firebase Client SDK\n(login)
+
+firestore -down-> rules : enforce
+
+api -down-> resend_api : POST\nnotifications
+resend_api -down-> mailbox : e-mail\n(demandes accès / MDP)
+
+note bottom of vercel
+  **Variables d'environnement (Production)**
+  NEXT_PUBLIC_FIREBASE_* · FIREBASE_CLIENT_EMAIL
+  FIREBASE_PRIVATE_KEY · POINTAGE_QR_SECRET
+  RESEND_API_KEY · ADMIN_NOTIFY_EMAIL
+  NEXT_PUBLIC_APP_URL
+end note
+
+@enduml
+
+
+@startuml deployment_timetrack_pro_simple
+title Déploiement simplifié — TimeTrack Pro (vue PFA)
+
+skinparam componentStyle rectangle
+
+actor Employé
+actor "Admin RH" as Admin
+
+package "Couche Présentation" #E1F5EE {
+  [Application Web Next.js\n(Vercel — Edge / Serverless)] as Web
+}
+
+package "Couche Métier" #E8F4FC {
+  [Routes API Next.js\n+ Firebase Admin SDK] as API
+}
+
+package "Couche Données & Services" #FFF8E7 {
+  [Firebase Authentication] as Auth
+  database "Cloud Firestore" as DB
+  [Resend — E-mails] as Mail
+}
+
+Employé --> Web : HTTPS
+Admin --> Web : HTTPS
+Web --> API
+API --> Auth
+API --> DB
+Web --> Auth : connexion client
+API --> Mail
+Mail --> Admin : alertes RH
+
+note right of Web
+  Déploiement continu Git → Vercel
+  URL : systemdepointage.vercel.app
+end note
+
+@enduml
