@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Menu, QrCode, UserPlus, Users } from "lucide-react";
+import { ClipboardList, Menu, QrCode, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/dashboard", label: "Présence", icon: ClipboardList },
   { href: "/admin/employes", label: "Employés", icon: Users },
   { href: "/admin/demandes", label: "Demandes", icon: UserPlus },
   { href: "/admin/qr-code", label: "QR", icon: QrCode },

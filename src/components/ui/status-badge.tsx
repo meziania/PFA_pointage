@@ -53,3 +53,12 @@ export function congeStatutVariant(statut: string): StatusVariant {
   if (statut === "refuse") return "rejected";
   return "pending";
 }
+
+export function presenceStatusVariant(
+  status: "present" | "retard" | "absent" | "en_conge" | "sorti",
+): StatusVariant {
+  if (status === "present" || status === "sorti") return "approved";
+  if (status === "retard") return "pending";
+  if (status === "absent") return "rejected";
+  return "inactive";
+}

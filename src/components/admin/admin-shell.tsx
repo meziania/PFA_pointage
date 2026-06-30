@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { signOut } from "firebase/auth";
 import {
   CalendarDays,
+  ClipboardList,
   KeyRound,
-  LayoutDashboard,
   LogOut,
   Menu,
   QrCode,
@@ -23,14 +23,29 @@ import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { AdminMobileBottomNav } from "@/components/admin/admin-mobile-bottom-nav";
 
-const items = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/employes", label: "Employés", icon: Users },
-  { href: "/admin/demandes", label: "Demandes", icon: UserPlus },
-  { href: "/admin/reinitialisation-mdp", label: "Réinit. MDP", icon: KeyRound },
-  { href: "/admin/conges", label: "Congés", icon: CalendarDays },
-  { href: "/admin/qr-code", label: "QR code", icon: QrCode },
-  { href: "/admin/parametres", label: "Paramètres", icon: Settings },
+type NavItem = { href: string; label: string; icon: typeof ClipboardList };
+
+const navSections: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Pointage",
+    items: [
+      { href: "/admin/dashboard", label: "Présence", icon: ClipboardList },
+      { href: "/admin/qr-code", label: "QR code", icon: QrCode },
+    ],
+  },
+  {
+    title: "Ressources humaines",
+    items: [
+      { href: "/admin/employes", label: "Employés", icon: Users },
+      { href: "/admin/conges", label: "Congés", icon: CalendarDays },
+      { href: "/admin/demandes", label: "Demandes", icon: UserPlus },
+      { href: "/admin/reinitialisation-mdp", label: "Réinit. MDP", icon: KeyRound },
+    ],
+  },
+  {
+    title: "Configuration",
+    items: [{ href: "/admin/parametres", label: "Paramètres", icon: Settings }],
+  },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -51,15 +66,21 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const Sidebar = (
     <aside className="admin-surface p-2">
-      <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Administration</p>
-      <nav className="flex flex-col gap-0.5">
-        {items.map((it) => (
-          <Link key={it.href} href={it.href} onClick={() => setMobileOpen(false)} className={navLinkClass(it.href)}>
-            <it.icon className="size-4 shrink-0" aria-hidden />
-            {it.label}
-          </Link>
-        ))}
-      </nav>
+      {navSections.map((section) => (
+        <div key={section.title} className="mb-3 last:mb-0">
+          <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {section.title}
+          </p>
+          <nav className="flex flex-col gap-0.5">
+            {section.items.map((it) => (
+              <Link key={it.href} href={it.href} onClick={() => setMobileOpen(false)} className={navLinkClass(it.href)}>
+                <it.icon className="size-4 shrink-0" aria-hidden />
+                {it.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      ))}
     </aside>
   );
 
