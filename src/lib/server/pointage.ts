@@ -3,19 +3,10 @@ import { getAdminDb } from "@/lib/server/firebase-admin";
 import { ApiError } from "@/lib/server/api-auth";
 import { getGeofenceSettings } from "@/lib/server/parametres-entreprise";
 import { validatePointageQr } from "@/lib/server/qr-settings";
+import { getMoroccoNowParts } from "@/lib/pointage-time";
 import type { PointageType } from "@/lib/data-model";
 
-function pad2(n: number) {
-  return String(n).padStart(2, "0");
-}
-
-function toYMD(d: Date) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function toHM(d: Date) {
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
+const MIN_SECONDS_BETWEEN_PUNCHES = 45;
 
 function haversineMeters(aLat: number, aLon: number, bLat: number, bLon: number) {
   const R = 6371000;
@@ -35,29 +26,25 @@ async function inferNextType(uid: string, ymd: string): Promise<PointageType> {
     .collection("pointages")
     .where("userId", "==", uid)
     .where("date", "==", ymd)
-    .limit(50)
+    .orderBy("createdAt", "desc")
+    .limit(1)
     .get();
 
   if (snap.empty) return "entree";
 
-  let latest: { createdAtMs: number; type: PointageType } | null = null;
-  for (const doc of snap.docs) {
-    const data = doc.data() as {
-      type?: unknown;
-      createdAt?: { toMillis?: () => number } | null;
-      heure?: unknown;
-    };
-    const type = data.type === "sortie" || data.type === "entree" ? (data.type as PointageType) : null;
-    if (!type) continue;
-    const createdAtMs = typeof data.createdAt?.toMillis === "function" ? data.createdAt.toMillis() : -1;
-    const heure = typeof data.heure === "string" ? data.heure : "00:00";
-    const fallbackMs = Date.parse(`${ymd}T${heure}:00`);
-    const ms = createdAtMs >= 0 ? createdAtMs : Number.isFinite(fallbackMs) ? fallbackMs : 0;
-    if (!latest || ms >= latest.createdAtMs) latest = { createdAtMs: ms, type };
+  const data = snap.docs[0]!.data() as { type?: unknown; createdAt?: { toMillis?: () => number } | null; heure?: unknown };
+  const type = data.type === "sortie" || data.type === "entree" ? (data.type as PointageType) : null;
+
+  const createdAtMs = typeof data.createdAt?.toMillis === "function" ? data.createdAt.toMillis() : -1;
+  if (createdAtMs >= 0) {
+    const elapsedSec = (Date.now() - createdAtMs) / 1000;
+    if (elapsedSec < MIN_SECONDS_BETWEEN_PUNCHES) {
+      throw ApiError.badRequest(`Attendez ${MIN_SECONDS_BETWEEN_PUNCHES}s entre deux pointages`);
+    }
   }
 
-  if (!latest) return "entree";
-  return latest.type === "entree" ? "sortie" : "entree";
+  if (!type) return "entree";
+  return type === "entree" ? "sortie" : "entree";
 }
 
 export async function createPointageRecord(params: {
@@ -91,8 +78,7 @@ export async function createPointageRecord(params: {
   }
 
   const now = new Date();
-  const ymd = toYMD(now);
-  const hm = toHM(now);
+  const { ymd, hm } = getMoroccoNowParts(now);
   const type = await inferNextType(params.uid, ymd);
 
   const ref = await getAdminDb().collection("pointages").add({

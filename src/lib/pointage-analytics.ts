@@ -1,4 +1,6 @@
 import type { CongeDoc, PointageDoc, UserDoc } from "@/lib/data-model";
+import { getMoroccoHolidaysInRange } from "@/lib/morocco-holidays";
+import { getMoroccoNowParts, moroccoYmdDaysAgo } from "@/lib/pointage-time";
 
 export type PointageRow = PointageDoc & { id: string };
 
@@ -48,23 +50,57 @@ export const PRESENCE_STATUS_LABELS: Record<PresenceDayStatus, string> = {
 };
 
 export function todayYmd(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  return getMoroccoNowParts().ymd;
+}
+
+export function toMinutes(hhmm: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  return hh * 60 + mm;
+}
+
+/** Heures travaillées sur une journée (paires entrée/sortie chronologiques). */
+export function computeDayWorkedHours(dayRows: PointageRow[]): number {
+  const list = [...dayRows].sort((a, b) => (toMinutes(a.heure) ?? 0) - (toMinutes(b.heure) ?? 0));
+  let open: number | null = null;
+  let totalMinutes = 0;
+  for (const r of list) {
+    const t = toMinutes(r.heure);
+    if (t === null) continue;
+    if (r.type === "entree") open = t;
+    else if (r.type === "sortie" && open !== null && t >= open) {
+      totalMinutes += t - open;
+      open = null;
+    }
+  }
+  return Math.round((totalMinutes / 60) * 100) / 100;
+}
+
+export function isWorkday(ymd: string, holidayDates?: Set<string>): boolean {
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  const dow = new Date(y, m - 1, d).getDay();
+  if (dow === 0 || dow === 6) return false;
+  if (holidayDates?.has(ymd)) return false;
+  return true;
+}
+
+export function buildHolidayDateSet(dates: string[]): Set<string> {
+  if (!dates.length) return new Set();
+  const sorted = [...dates].sort();
+  const start = sorted[0]!;
+  const end = sorted[sorted.length - 1]!;
+  return new Set(getMoroccoHolidaysInRange(start, end).map((h) => h.date));
 }
 
 export function lastNDaysYmd(n: number): string[] {
   const out: string[] = [];
-  const d = new Date();
   for (let i = n - 1; i >= 0; i -= 1) {
-    const dd = new Date(d);
-    dd.setDate(d.getDate() - i);
-    const yyyy = dd.getFullYear();
-    const mm = String(dd.getMonth() + 1).padStart(2, "0");
-    const day = String(dd.getDate()).padStart(2, "0");
-    out.push(`${yyyy}-${mm}-${day}`);
+    out.push(moroccoYmdDaysAgo(i));
   }
   return out;
 }
@@ -96,10 +132,7 @@ export function computeDailyHours(rows: PointageRow[], ymd: string): number {
 
   let total = 0;
   for (const arr of byUser.values()) {
-    const entries = arr.filter((x) => x.type === "entree").sort((a, b) => a.heure.localeCompare(b.heure));
-    const exits = arr.filter((x) => x.type === "sortie").sort((a, b) => a.heure.localeCompare(b.heure));
-    if (!entries.length || !exits.length) continue;
-    total += hoursBetween(entries[0]!, exits[exits.length - 1]!);
+    total += computeDayWorkedHours(arr);
   }
   return Math.round(total * 100) / 100;
 }
@@ -161,13 +194,13 @@ export function computeTodayPresenceBoard(
     const isLate = firstEntry.heure > WORK_RULES.expectedStart;
 
     if (lastExit) {
-      const h = hoursBetween(firstEntry, lastExit);
+      const h = computeDayWorkedHours(dayRows);
       return {
         userId: emp.id,
         status: "sorti" as const,
         entree: firstEntry.heure,
         sortie: lastExit.heure,
-        heures: Math.round(h * 100) / 100,
+        heures: h,
         details: isLate ? `Entrée à ${firstEntry.heure}` : undefined,
       };
     }
@@ -200,6 +233,7 @@ export function detectAnomalies(rows: PointageRow[], opts?: { skipAbsenceKeys?: 
   const skip = opts?.skipAbsenceKeys;
   const byUserDate = new Map<string, PointageRow[]>();
   for (const r of rows) {
+    if (r.valide === false) continue;
     const key = `${r.userId}|${r.date}`;
     const arr = byUserDate.get(key) ?? [];
     arr.push(r);
@@ -214,7 +248,7 @@ export function detectAnomalies(rows: PointageRow[], opts?: { skipAbsenceKeys?: 
 
     if (entries.length === 0) {
       if (!skip?.has(key)) {
-        result.push({ key, userId, date, kind: "Absence", details: "Aucune entrée" });
+        result.push({ key, userId, date, kind: "Absence", details: "Aucune entrée enregistrée" });
       }
       continue;
     }
@@ -234,12 +268,72 @@ export function detectAnomalies(rows: PointageRow[], opts?: { skipAbsenceKeys?: 
       result.push({ key, userId, date, kind: "Sortie anticipée", details: `Sortie à ${lastExit.heure}` });
     }
 
-    const h = hoursBetween(firstEntry, lastExit);
+    const h = computeDayWorkedHours(arr);
     if (h < WORK_RULES.minHours) {
       result.push({ key, userId, date, kind: "Insuffisance", details: `${h.toFixed(2)}h (< ${WORK_RULES.minHours}h)` });
     }
   }
   return result;
+}
+
+/** Absences planifiées : employés actifs sans entrée sur jours ouvrés (hors congés). */
+export function detectScheduledAbsences(
+  activeEmployees: EmployeeMini[],
+  dates: string[],
+  rows: PointageRow[],
+  conges: CongeMini[],
+  opts?: { holidayDates?: Set<string> },
+): AnomalyRow[] {
+  const leaveKeys = buildLeaveKeys(conges, dates);
+  const withEntry = new Set<string>();
+  for (const r of rows) {
+    if (r.valide === false) continue;
+    if (r.type === "entree") withEntry.add(`${r.userId}|${r.date}`);
+  }
+
+  const today = todayYmd();
+  const result: AnomalyRow[] = [];
+  for (const date of dates) {
+    if (!isWorkday(date, opts?.holidayDates)) continue;
+    if (ymdToTime(date) > ymdToTime(today)) continue;
+
+    for (const emp of activeEmployees) {
+      const key = `${emp.id}|${date}`;
+      if (leaveKeys.has(key)) continue;
+      if (withEntry.has(key)) continue;
+      result.push({ key, userId: emp.id, date, kind: "Absence", details: "Aucune entrée" });
+    }
+  }
+  return result;
+}
+
+export function mergeAnomalies(pointageAnomalies: AnomalyRow[], scheduledAbsences: AnomalyRow[]): AnomalyRow[] {
+  const withoutDuplicateAbsence = pointageAnomalies.filter((a) => a.kind !== "Absence");
+  const keys = new Set(withoutDuplicateAbsence.map((a) => `${a.key}|${a.kind}`));
+  const merged = [...withoutDuplicateAbsence];
+  for (const a of scheduledAbsences) {
+    const k = `${a.key}|${a.kind}`;
+    if (!keys.has(k)) {
+      keys.add(k);
+      merged.push(a);
+    }
+  }
+  return merged.sort((a, b) => b.date.localeCompare(a.date) || a.kind.localeCompare(b.kind));
+}
+
+export function enumerateYmdRange(start: string, end: string): string[] {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const out: string[] = [];
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  if (!sy || !sm || !sd || !ey || !em || !ed) return out;
+  const cur = new Date(sy, sm - 1, sd);
+  const last = new Date(ey, em - 1, ed);
+  while (cur <= last) {
+    out.push(`${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
 }
 
 export function filterPointages(

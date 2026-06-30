@@ -16,6 +16,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
+import { moroccoYmdDaysAgo } from "@/lib/pointage-time";
 import type { CongeDoc, CongeStatut, DemandeAdhesionDoc, DemandeAdhesionStatut, PointageDoc, UserDoc, UserRole } from "@/lib/data-model";
 
 function requireDb() {
@@ -135,13 +136,26 @@ export async function updateEmployeeProfile(
   await updateDoc(ref, data);
 }
 
-export async function listPointagesForUser(uid: string, take = 50): Promise<Array<PointageDoc & { id: string }>> {
+export async function listPointagesForUser(
+  uid: string,
+  opts?: { fromYmd?: string; take?: number },
+): Promise<Array<PointageDoc & { id: string }>> {
   const db = requireDb();
-  // Avoid composite index requirement: no orderBy here; sort client-side.
-  const q = query(collection(db, "pointages"), where("userId", "==", uid), limit(take));
+  const take = opts?.take ?? 300;
+  const q = opts?.fromYmd
+    ? query(
+        collection(db, "pointages"),
+        where("userId", "==", uid),
+        where("date", ">=", opts.fromYmd),
+        orderBy("date", "desc"),
+        limit(take),
+      )
+    : query(collection(db, "pointages"), where("userId", "==", uid), orderBy("date", "desc"), limit(take));
   const snaps = await getDocs(q);
   const rows = snaps.docs.map((d) => ({ id: d.id, ...(d.data() as PointageDoc) }));
   rows.sort((a, b) => {
+    const dateCmp = b.date.localeCompare(a.date);
+    if (dateCmp !== 0) return dateCmp;
     const aa = unwrapTimestamp(a.createdAt)?.getTime() ?? Date.parse(`${a.date}T${a.heure}:00`);
     const bb = unwrapTimestamp(b.createdAt)?.getTime() ?? Date.parse(`${b.date}T${b.heure}:00`);
     return bb - aa;
@@ -149,11 +163,15 @@ export async function listPointagesForUser(uid: string, take = 50): Promise<Arra
   return rows;
 }
 
-export async function listPointages(take = 200): Promise<Array<PointageDoc & { id: string }>> {
+export async function listPointagesSince(fromYmd: string, take = 800): Promise<Array<PointageDoc & { id: string }>> {
   const db = requireDb();
-  const q = query(collection(db, "pointages"), orderBy("createdAt", "desc"), limit(take));
+  const q = query(collection(db, "pointages"), where("date", ">=", fromYmd), orderBy("date", "desc"), limit(take));
   const snaps = await getDocs(q);
   return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as PointageDoc) }));
+}
+
+export async function listPointages(take = 200): Promise<Array<PointageDoc & { id: string }>> {
+  return listPointagesSince(moroccoYmdDaysAgo(60), take);
 }
 
 export async function listPendingJoinRequests(take = 50): Promise<Array<DemandeAdhesionDoc & { id: string }>> {

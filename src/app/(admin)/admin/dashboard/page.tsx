@@ -19,13 +19,17 @@ import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 import { listPointages } from "@/lib/firestore-helpers";
 import type { CongeDoc, UserDoc } from "@/lib/data-model";
 import {
+  buildHolidayDateSet,
   buildLeaveKeys,
   computeDailyHours,
   computePresenceRateToday,
   computeTodayPresenceBoard,
   detectAnomalies,
+  detectScheduledAbsences,
+  enumerateYmdRange,
   filterPointages,
   lastNDaysYmd,
+  mergeAnomalies,
   todayYmd,
   usersOnLeaveForDate,
   type CongeMini,
@@ -95,7 +99,7 @@ export default function AdminDashboardPage() {
     try {
       const [pointages, usersSnap, congesSnap, congesPendingSnap, congesValideSnap, congesRefuseSnap] =
         await Promise.all([
-          listPointages(500),
+          listPointages(800),
           getDocs(query(collection(db, "users"), limit(500))),
           getDocs(query(collection(db, "conges"), limit(300))),
           getCountFromServer(query(collection(db, "conges"), where("statut", "==", "en_attente"))),
@@ -181,12 +185,26 @@ export default function AdminDashboardPage() {
 
   const filteredDates = useMemo(() => [...new Set(filtered.map((r) => r.date))], [filtered]);
 
-  const leaveKeys = useMemo(() => buildLeaveKeys(conges, filteredDates), [conges, filteredDates]);
+  const anomalyDates = useMemo(() => {
+    if (filterMode === "day" && date.trim()) return [date.trim()];
+    if (filterMode === "range") {
+      const start = dateDebut.trim();
+      const end = dateFin.trim();
+      if (start && end) return enumerateYmdRange(start, end);
+      if (start) return [start];
+    }
+    return filteredDates.length ? filteredDates : lastNDaysYmd(7);
+  }, [date, dateDebut, dateFin, filterMode, filteredDates]);
 
-  const anomalies = useMemo(
-    () => detectAnomalies(filtered, { skipAbsenceKeys: leaveKeys }),
-    [filtered, leaveKeys],
-  );
+  const holidayDates = useMemo(() => buildHolidayDateSet(anomalyDates), [anomalyDates]);
+
+  const leaveKeys = useMemo(() => buildLeaveKeys(conges, anomalyDates), [conges, anomalyDates]);
+
+  const anomalies = useMemo(() => {
+    const pointageAnomalies = detectAnomalies(filtered, { skipAbsenceKeys: leaveKeys });
+    const scheduled = detectScheduledAbsences(activeEmployees, anomalyDates, filtered, conges, { holidayDates });
+    return mergeAnomalies(pointageAnomalies, scheduled);
+  }, [activeEmployees, anomalyDates, conges, filtered, holidayDates, leaveKeys]);
 
   const boardStats = useMemo(() => {
     const stats = {

@@ -2,26 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { eachDayOfInterval, endOfMonth, format, isWeekend, parseISO, startOfMonth } from "date-fns";
+import { eachDayOfInterval, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/components/providers/auth-provider";
-import { listPointagesForUser } from "@/lib/firestore-helpers";
-import type { PointageDoc } from "@/lib/data-model";
+import { listCongesForUser, listPointagesForUser } from "@/lib/firestore-helpers";
+import type { CongeDoc, PointageDoc } from "@/lib/data-model";
+import {
+  WORK_RULES,
+  buildHolidayDateSet,
+  computeDayWorkedHours,
+  isDateInCongeRange,
+  isWorkday,
+  toMinutes,
+} from "@/lib/pointage-analytics";
 
 type Row = PointageDoc & { id: string };
 
 type FilterKey = "all" | "entree" | "sortie" | "retards";
-
-function toMinutes(hhmm: string): number | null {
-  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
-  if (!m) return null;
-  const hh = Number(m[1]);
-  const mm = Number(m[2]);
-  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
-  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
-  return hh * 60 + mm;
-}
 
 function fmtHours(hours: number): string {
   if (!Number.isFinite(hours)) return "0 h";
@@ -49,24 +47,31 @@ function csvEscape(v: string): string {
 export default function HistoriquePage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
+  const [conges, setConges] = useState<CongeDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [month, setMonth] = useState(() => format(new Date(), "yyyy-MM"));
 
-  // Règle simple (MVP): entrée attendue à 08:30
-  const expectedStart = "08:30";
+  const expectedStart = WORK_RULES.expectedStart;
 
   useEffect(() => {
     if (!user) return;
     queueMicrotask(() => setLoading(true));
-    listPointagesForUser(user.uid, 200)
-      .then(setRows)
+    const fromYmd = `${month}-01`;
+    Promise.all([
+      listPointagesForUser(user.uid, { fromYmd, take: 400 }),
+      listCongesForUser(user.uid, 100),
+    ])
+      .then(([pointages, congesRows]) => {
+        setRows(pointages);
+        setConges(congesRows);
+      })
       .catch((err) => {
         const code = (err as { code?: string })?.code;
         toast.error(code === "permission-denied" ? "Accès refusé (règles Firestore)." : "Impossible de charger l'historique");
       })
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, month]);
 
   const monthRows = useMemo(() => {
     const prefix = `${month}-`;
@@ -100,25 +105,25 @@ export default function HistoriquePage() {
         anomalies.push({ date, minutesLate: late });
       }
 
-      // Pair entrée/sortie in order
-      let open: number | null = null;
-      for (const r of list) {
-        const t = toMinutes(r.heure);
-        if (t === null) continue;
-        if (r.type === "entree") open = t;
-        else if (r.type === "sortie" && open !== null && t >= open) {
-          totalMinutes += t - open;
-          open = null;
-        }
-      }
+      totalMinutes += computeDayWorkedHours(list) * 60;
     }
 
     const periodStart = startOfMonth(parseISO(`${month}-01`));
     const periodEnd = endOfMonth(periodStart);
-    const workdays = eachDayOfInterval({ start: periodStart, end: periodEnd }).filter((d) => !isWeekend(d));
-    const presentDays = workdays.filter((d) => byDay.has(format(d, "yyyy-MM-dd"))).length;
-    const absences = Math.max(0, workdays.length - presentDays);
-    const presenceRate = workdays.length > 0 ? Math.round((presentDays / workdays.length) * 100) : 0;
+    const holidayDates = buildHolidayDateSet(
+      eachDayOfInterval({ start: periodStart, end: periodEnd }).map((d) => format(d, "yyyy-MM-dd")),
+    );
+    const workdays = eachDayOfInterval({ start: periodStart, end: periodEnd }).filter((d) =>
+      isWorkday(format(d, "yyyy-MM-dd"), holidayDates),
+    );
+    const countableWorkdays = workdays.filter((d) => {
+      const ymd = format(d, "yyyy-MM-dd");
+      return !conges.some((c) => isDateInCongeRange(ymd, c));
+    });
+    const presentAmongCountable = countableWorkdays.filter((d) => byDay.has(format(d, "yyyy-MM-dd"))).length;
+    const absences = Math.max(0, countableWorkdays.length - presentAmongCountable);
+    const presenceRate =
+      countableWorkdays.length > 0 ? Math.round((presentAmongCountable / countableWorkdays.length) * 100) : 0;
 
     anomalies = anomalies
       .sort((a, b) => b.minutesLate - a.minutesLate)
@@ -133,7 +138,7 @@ export default function HistoriquePage() {
       byDay,
       expectedStart,
     };
-  }, [monthRows, month, expectedStart]);
+  }, [monthRows, month, expectedStart, conges]);
 
   const viewRows = useMemo(() => {
     const expectedMin = toMinutes(computed.expectedStart) ?? 510;
