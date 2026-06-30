@@ -67,6 +67,18 @@ export type PointageDoc = {
   createdAt?: unknown;
 };
 
+/** Résumé journalier persisté à chaque pointage (consultation RH multi-jours). */
+export type JournalPresenceDoc = {
+  userId: string;
+  date: string;
+  entree?: string;
+  sortie?: string;
+  heures?: number;
+  statut: "present" | "retard" | "sorti" | "absent" | "en_conge";
+  pointagesCount: number;
+  updatedAt?: unknown;
+};
+
 export type CongeType = "annuel" | "maladie" | "exceptionnel";
 export type CongeStatut = "en_attente" | "valide" | "refuse";
 

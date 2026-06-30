@@ -63,6 +63,11 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /journal_presence/{journalId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
     match /conges/{congeId} {
       allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
 

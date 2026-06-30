@@ -17,7 +17,9 @@ import { collection, getCountFromServer, getDocs, limit, query, where } from "fi
 import { Button } from "@/components/ui/button";
 import { getFirebaseFirestore } from "@/lib/firebase-firestore";
 import { listPointages } from "@/lib/firestore-helpers";
-import type { CongeDoc, UserDoc } from "@/lib/data-model";
+import { fetchAdminJournal, type JournalPresenceMode } from "@/lib/admin-journal-client";
+import { moroccoYmdDaysAgo } from "@/lib/pointage-time";
+import type { CongeDoc, JournalPresenceDoc, UserDoc } from "@/lib/data-model";
 import {
   buildHolidayDateSet,
   buildLeaveKeys,
@@ -42,6 +44,8 @@ import { PresenceTodayBoard } from "@/components/admin/dashboard/presence-today-
 import { PresenceJournalPanel } from "@/components/admin/dashboard/presence-journal-panel";
 import { PresenceChartsPanel } from "@/components/admin/dashboard/presence-charts-panel";
 import { PresenceAnomaliesPanel } from "@/components/admin/dashboard/presence-anomalies-panel";
+import type { PeriodPreset } from "@/components/admin/dashboard/presence-journal-panel";
+import { apiErrorMessage } from "@/lib/user-management";
 
 type CongeStatusKey = "en_attente" | "valide" | "refuse";
 type CongeSlice = { key: CongeStatusKey; label: string; value: number; color: string };
@@ -79,11 +83,16 @@ export default function AdminDashboardPage() {
   ]);
   const [hoursByDay, setHoursByDay] = useState<HoursDayRow[]>([]);
 
-  const [filterMode, setFilterMode] = useState<"day" | "range">("day");
+  const [filterMode, setFilterMode] = useState<"day" | "range">("range");
   const [employeeId, setEmployeeId] = useState("");
   const [date, setDate] = useState(() => todayYmd());
-  const [dateDebut, setDateDebut] = useState("");
-  const [dateFin, setDateFin] = useState("");
+  const [dateDebut, setDateDebut] = useState(() => moroccoYmdDaysAgo(30));
+  const [dateFin, setDateFin] = useState(() => todayYmd());
+  const [journalView, setJournalView] = useState<JournalPresenceMode>("presence");
+  const [journalRows, setJournalRows] = useState<Array<JournalPresenceDoc & { id: string }>>([]);
+  const [journalPointages, setJournalPointages] = useState<PointageRow[]>([]);
+  const [journalLoading, setJournalLoading] = useState(false);
+  const [journalLoaded, setJournalLoaded] = useState(false);
 
   const today = todayYmd();
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
@@ -157,6 +166,67 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     queueMicrotask(() => void loadData());
   }, []);
+
+  function resolveJournalRange(): { from: string; to: string } {
+    if (filterMode === "day" && date.trim()) {
+      return { from: date.trim(), to: date.trim() };
+    }
+    const from = dateDebut.trim() || moroccoYmdDaysAgo(30);
+    const to = dateFin.trim() || todayYmd();
+    return { from, to };
+  }
+
+  async function loadJournal(override?: { from?: string; to?: string; mode?: JournalPresenceMode }) {
+    const range = resolveJournalRange();
+    const from = override?.from ?? range.from;
+    const to = override?.to ?? range.to;
+    const mode = override?.mode ?? journalView;
+    setJournalLoading(true);
+    try {
+      const res = await fetchAdminJournal({
+        from,
+        to,
+        userId: employeeId.trim() || undefined,
+        mode,
+      });
+      if (res.mode === "presence") {
+        setJournalRows(res.journal);
+      } else {
+        setJournalPointages(res.pointages as PointageRow[]);
+      }
+      setJournalLoaded(true);
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Impossible de charger le journal."));
+    } finally {
+      setJournalLoading(false);
+    }
+  }
+
+  function applyJournalPreset(preset: PeriodPreset) {
+    const today = todayYmd();
+    if (preset === "today") {
+      setFilterMode("day");
+      setDate(today);
+      void loadJournal({ from: today, to: today });
+      return;
+    }
+    setFilterMode("range");
+    setDateFin(today);
+    const from =
+      preset === "7d" ? moroccoYmdDaysAgo(7) : preset === "30d" ? moroccoYmdDaysAgo(30) : `${today.slice(0, 7)}-01`;
+    setDateDebut(from);
+    void loadJournal({ from, to: today });
+  }
+
+  function handleJournalViewChange(mode: JournalPresenceMode) {
+    setJournalView(mode);
+    if (journalLoaded) void loadJournal({ mode });
+  }
+
+  useEffect(() => {
+    if (section !== "journal" || journalLoaded) return;
+    queueMicrotask(() => void loadJournal());
+  }, [section, journalLoaded]);
 
   const activeEmployees = useMemo(
     () => employees.filter((e) => e.role === "employe" && (e.statut ?? "actif") === "actif"),
@@ -274,8 +344,29 @@ export default function AdminDashboardPage() {
   }
 
   function exportCsv() {
+    if (journalView === "presence") {
+      const header = ["userNom", "userEmail", "date", "statut", "entree", "sortie", "heures", "pointagesCount"];
+      const lines = journalRows.map((r) => {
+        const u = userById.get(r.userId);
+        return [
+          u?.nom ?? "",
+          u?.email ?? "",
+          r.date,
+          r.statut,
+          r.entree ?? "",
+          r.sortie ?? "",
+          r.heures != null ? String(r.heures) : "",
+          String(r.pointagesCount),
+        ];
+      });
+      const csv = [header, ...lines].map((row) => row.map(csvEscape).join(",")).join("\n");
+      downloadText(`journal-presence-${todayYmd()}.csv`, csv, "text/csv;charset=utf-8");
+      toast.success("Export CSV généré");
+      return;
+    }
+
     const header = ["userNom", "userEmail", "date", "heure", "type", "latitude", "longitude", "valide"];
-    const lines = filtered.map((r) => {
+    const lines = journalPointages.map((r) => {
       const u = userById.get(r.userId);
       return [
         u?.nom ?? "",
@@ -332,7 +423,13 @@ export default function AdminDashboardPage() {
       {section === "journal" ? (
         <PresenceJournalPanel
           loading={loading}
-          filtered={filtered}
+          journalLoading={journalLoading}
+          journalView={journalView}
+          onJournalViewChange={handleJournalViewChange}
+          onLoadJournal={() => void loadJournal()}
+          onApplyPreset={applyJournalPreset}
+          filtered={journalPointages}
+          journalRows={journalRows}
           employeeOptions={activeEmployees}
           employeeId={employeeId}
           onEmployeeIdChange={setEmployeeId}

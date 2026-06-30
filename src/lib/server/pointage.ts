@@ -92,5 +92,8 @@ export async function createPointageRecord(params: {
     createdAt: FieldValue.serverTimestamp(),
   });
 
+  const { refreshJournalPresenceForDay } = await import("@/lib/server/presence-journal");
+  await refreshJournalPresenceForDay(params.uid, ymd);
+
   return { id: ref.id, date: ymd, heure: hm, type };
 }
